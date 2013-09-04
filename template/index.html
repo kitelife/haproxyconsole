@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VIDC链路易迅侧虚拟ip端口申请</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" />
+    <link href="/static/style.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="container">
+            <div class="row-fluid">
+                <div class="span6 offset3 content">
+                    <div class="ui-box">
+                        <div class="ui-box-header">
+                            <h4>填写VIDC链路易迅源端主备</h4>
+                        </div>
+                        <div class="ui-box-container">
+                            <form class="form-horizontal" id="form">
+                                <div class="control-group">
+                                    <label class="control-label" for="master">主：</label>
+                                    <div class="controls" id="master">
+                                        <input type="text" class="input-medium" name="master-ip" id="master-ip" placeholder="ip" />
+                                        <input type="text" class="input-small" name="master-port" id="master-port" placeholder="port" />
+                                    </div>
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="backup">备：</label>
+                                    <div class="controls" id="backup">
+                                        <input type="text" class="input-medium" name="backup-ip" id="backup-ip" placeholder="ip" />
+                                        <input type="text" class="input-small" name="backup-port" id="backup-port" placeholder="port" />
+                                    </div>
+                                </div>
+                                <div class="control-group">
+                                    <div class="controls" id="submit-button">
+                                        <button type="submit" class="btn" id="submit"><i class="icon-ok-sign"></i> 提交</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/static/jquery.js" type="text/javascript"></script>
+    <script src="/static/jquery.validate.js" type="text/javascript"></script>
+    <script src="/static/main.js" type="text/javascript"></script>
+</body>
+</html>

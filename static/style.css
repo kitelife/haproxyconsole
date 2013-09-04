@@ -1,0 +1,51 @@
+.ui-box {
+    margin: 100px 0px 0px 0px;
+    background: white;
+    border: 1px solid #ccc;
+    border-top-color: #DADADA;
+    border-radius: 4px;
+    box-shadow: 1px 1px 10px #BCBCBC;
+    color: #464646;
+}
+
+.ui-box-header {
+    position: relative;
+    padding: 0px 10px;
+    border-bottom: 1px solid #dadada;
+    border-radius: 3px 3px 0 0;
+    font: 14px/1.6 "Helvetica", arial, sans-serif;
+    margin-bottom: 10px;
+}
+
+.ui-box-container {
+    padding: 8px 10px;
+    line-height: 1.6;
+}
+
+.form-horizontal .control-label {
+    width: 145px;
+}
+
+.form-horizontal .controls {
+    margin-left: 150px;
+}
+
+#submit-button {
+    margin-left: 330px;
+}
+
+label.error {
+    background-color: #b94a48;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    color: #ffffff;
+    font-weight: bold;
+    line-height: 20px;
+    padding: 2px 3px;
+    margin: 2px 0px;
+    width: 160px;
+}
+
+#result {
+    text-align: center;
+}
