@@ -25,6 +25,12 @@ type applyResult struct {
 	Msg     string
 }
 
+type listenTaskInfo struct {
+	servers string
+	vport int
+	dateTime string
+}
+
 // 主页请求处理函数
 func getHomePage(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("../template/index.html")
@@ -37,37 +43,9 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 
 // 申请虚拟ip端口请求处理函数
 func applyVPort(w http.ResponseWriter, r *http.Request) {
-	masterIp := r.FormValue("masterIp")
-	masterPort := r.FormValue("masterPort")
-	backupIp := r.FormValue("backupIp")
-	backupPort := r.FormValue("backupPort")
+	servers := r.FormValue("servers")
 
-	rows, err := db.Query("SELECT COUNT(*) FROM haproxymapinfo WHERE masterip=? AND masterport=? AND backupip=? AND backupport=?", masterIp, masterPort, backupIp, backupPort)
-	if err != nil {
-		logger.Println(err)
-	}
-
-	var count int
-	for rows.Next() {
-		err = rows.Scan(&count)
-		if err == nil {
-			break
-		}
-	}
-
-	if count != 0 {
-		result := applyResult{
-			Success: "false",
-			Msg: "该主备机器信息已存在",
-		}
-		rt, err := json.Marshal(result)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Fprintf(w, string(rt))
-		return
-	}
-	rows, err = db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport DESC LIMIT 1")
+	rows, err := db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport DESC LIMIT 1")
 	if err != nil {
 		logger.Println(err)
 	}
@@ -83,7 +61,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	}
 	vportToAssign := maxiumVPort + 1
 	now := time.Now().Format("2006-01-02 15:04:05")
-	_, err = db.Exec("INSERT INTO haproxymapinfo (masterip, masterport, backupip, backupport, vport, datetime) VALUES (?, ?, ?, ?, ?, ?)", masterIp, masterPort, backupIp, backupPort, vportToAssign, now)
+	_, err = db.Exec("INSERT INTO haproxymapinfo (servers, vport, datetime) VALUES (?, ?, ?)", servers, vportToAssign, now)
 	if err != nil {
 		logger.Println(err)
 	}
@@ -101,6 +79,30 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Fprintf(w, string(rt))
+	return
+}
+
+// 获取haproxy listen任务列表
+func getListenList(w http.ResponseWriter, r *http.Request){
+	rows, err := db.Query("SELECT servers, vport, datetime FROM haproxymapinfo ORDER BY datetime DESC")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var listenTasks = make([]listenTaskInfo, 0, 100)
+	var servers string
+	var vport int
+	var dateTime string
+	for rows.Next() {
+		err = rows.Scan(&servers, &vport, &dateTime)
+		append(listenTasks, listenTaskInfo{servers: servers, vport: vport, dateTime: dateTime})
+	}
+	err = rows.Err()
+	if err != nil {
+		fmt.Println(err)
+	}
+	t, err := template.ParseFiles("../templates/listenlist.html")
+	t.Execute(w, listenTasks)
 	return
 }
 
@@ -132,6 +134,7 @@ func main() {
 	// 请求路由
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
 	http.HandleFunc("/applyvport", applyVPort)
+	http.HandleFunc("/listenlist", getListenList)
 	http.HandleFunc("/", getHomePage)
 
 	// 启动http服务

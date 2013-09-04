@@ -22,30 +22,30 @@
     line-height: 1.6;
 }
 
-.form-horizontal .control-label {
-    width: 145px;
-}
-
 .form-horizontal .controls {
-    margin-left: 150px;
+    margin-left: 0px;
+    text-align: center;
 }
 
-#submit-button {
-    margin-left: 330px;
+#button-group {
+    float: right;
 }
 
-label.error {
-    background-color: #b94a48;
-    -webkit-border-radius: 3px;
-    border-radius: 3px;
-    color: #ffffff;
-    font-weight: bold;
-    line-height: 20px;
-    padding: 2px 3px;
-    margin: 2px 0px;
-    width: 160px;
+#preview-table {
+    display: none;
+    margin-top: 10px;
+}
+
+#submit {
+    display: none;
+}
+
+#submit, #preview {
+    margin-right: 20px;
 }
 
 #result {
+    margin-top: 10px;
     text-align: center;
 }
+
