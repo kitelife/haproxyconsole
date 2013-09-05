@@ -116,8 +116,7 @@ func rebuildHAProxyConf() {
 	haproxyConfFile, _ := os.OpenFile("/user/local/haproxy/conf/haproxy.conf", os.O_CREATE | os.O_RDWR, 0666)
 	defer haproxyConfFile.Close()
 	haproxyConfFile.WriteString(newConfig)
-	// 重启haproxy
-	
+	// 重启haproxy	
 	cmd := exec.Command("/usr/local/haproxy/restart_haproxy.sh")
 	err = cmd.Run()
 	if err != nil {
