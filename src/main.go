@@ -5,10 +5,12 @@ import (
 	"html/template"
 	"log"
 	"os"
+	//"os/exec"
 	"time"
 	"fmt"
 	"strings"
 	"strconv"
+	"io/ioutil"
 	"encoding/json"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
@@ -54,6 +56,14 @@ type listenListData struct {
 	ListenTaskList []listenTaskInfo
 }
 
+// 存储配置文件解析结果
+type config struct {
+	Global       []string
+	Defaults     []string
+	ListenStats  []string
+	ListenCommon []string
+}
+
 // 主页请求处理函数
 func getHomePage(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("../template/header.tmpl", "../template/index.tmpl", "../template/footer.tmpl")
@@ -62,6 +72,58 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 	}else {
 		t.ExecuteTemplate(w, "index", nil)
 	}
+}
+
+// 根据数据库数据重新生成HAProxy配置文件，并重启HAProxy
+func rebuildHAProxyConf() {
+
+	newConfigParts := make([]string,0, 50)
+
+	bytes, err := ioutil.ReadFile("../conf/haproxy_conf.json")
+	if err != nil {
+		logger.Fatalln(err)
+		return
+	}
+	var conf config
+	err = json.Unmarshal(bytes, &conf)
+	if err != nil {
+		logger.Fatalln(err)
+		return
+	}
+	newConfigParts = append(newConfigParts, strings.Join(conf.Global, "\n\t"))
+	newConfigParts = append(newConfigParts, strings.Join(conf.Defaults, "\n\t"))
+
+	rows, err := db.Query("SELECT servers, vport FROM haproxymapinfo ORDER BY vport ASC")
+	if err != nil {
+		logger.Println(err)
+	}
+
+	var servers string
+	var vport int
+	for rows.Next() {
+		err = rows.Scan(&servers, &vport)
+		serverList := strings.Split(servers, "-")
+		backendServerInfoList := make([]string,0, 10)
+
+		for i := 0; i < len(serverList); i++ {
+			serverInfoPath := strings.Split(serverList[i], ":")
+			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverInfoPath[1], serverList[i]))
+		}
+		newConfigParts = append(newConfigParts, fmt.Sprintf("Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(conf.ListenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
+	}
+	newConfigParts = append(newConfigParts, strings.Join(conf.ListenStats, "\n\t"))
+	newConfig := strings.Join(newConfigParts, "\n\n")
+	haproxyConfFile, _ := os.OpenFile("../conf/haproxy.conf", os.O_CREATE | os.O_RDWR, 0666)
+	defer haproxyConfFile.Close()
+	haproxyConfFile.WriteString(newConfig)
+	// 重启haproxy
+	/*
+	cmd := exec.Command("/usr/local/haproxy/sbin/haproxy -f /usr/local/haproxy/conf/haproxy.conf -st `/usr/local/haproxy/haproxy.pid`")
+	err = cmd.Run()
+	if err != nil {
+		logger.Println(err)
+	}
+	*/
 }
 
 // 申请虚拟ip端口请求处理函数
@@ -102,6 +164,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Fprintf(w, string(rt))
+	go rebuildHAProxyConf()
 	return
 }
 

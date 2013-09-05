@@ -1,0 +1,42 @@
+{
+    "Global" : [
+        "global",
+        "log 127.0.0.1 local3 debug",
+        "daemon",
+        "user root",
+        "group root",
+        "maxconn 65535",
+        "nbproc 1",
+        "pidfile /usr/local/haproxy/haproxy.pid"
+    ],
+    "Defaults":[
+        "defaults",
+        "option redispatch",
+        "option dontlognull",
+        "retries 3",
+        "balance roundrobin",
+        "timeout connect 5000ms",
+        "timeout client 1800000ms",
+        "timeout server 1800000ms"
+    ],
+    "ListenStats":[
+        "listen stats",
+        "bind *:8888",
+        "mode http",
+        "option httplog",
+        "log global",
+        "stats uri /",
+        "stats realm Haproxy \\ statistic",
+        "stats refresh 30s",
+        "stats enable",
+        "stats show-legends",
+        "stats admin if TRUE",
+        "stats auth admin:admin",
+        "stats hide-version"
+    ],
+    "ListenCommon":[
+        "mode tcp",
+        "option tcplog",
+        "log global"
+    ]
+}
