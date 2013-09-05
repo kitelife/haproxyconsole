@@ -15,8 +15,8 @@
         <div class="container">
             <a class="brand" href="/">HAProxy负载均衡任务管理</a>
             <ul class="nav">
-                <li {{if .Nav.AddTask}}class="active"{{end}}><a href="/">新增任务</a></li>
-                <li {{if .Nav.ListenList}}class="active"{{end}}><a href="/listenlist">任务列表</a></li>
+                <li class="{{.Nav.AddTask}}"><a href="/">新增任务</a></li>
+                <li class="{{.Nav.ListenList}}"><a href="/listenlist">任务列表</a></li>
             </ul>
         </div>
     </div>

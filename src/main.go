@@ -35,19 +35,22 @@ type listenTaskInfo struct {
 }
 
 // 页面导航栏高亮数据
+/*
 type navHighlight struct {
-	AddTask    bool
-	ListenList bool
+	AddTask    string
+	ListenList string
 }
+*/
 
 //index页面，即添加任务页面，模板数据
+/*
 type indexData struct {
 	Nav navHighlight
 }
+*/
 
 // listenlist页面模板数据
 type listenListData struct {
-	Nav            navHighlight
 	ListenTaskList []listenTaskInfo
 }
 
@@ -57,12 +60,7 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}else {
-		nav := navHighlight{
-			AddTask: true,
-			ListenList: false,
-		}
-		IndexData := indexData{Nav: nav, }
-		t.ExecuteTemplate(w, "index", IndexData)
+		t.ExecuteTemplate(w, "index", nil)
 	}
 }
 
@@ -135,12 +133,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	Lld := listenListData{
-		Nav: navHighlight{
-			AddTask: false,
-			ListenList: true,
-		},
 		ListenTaskList: listenTasks,
 	}
 
