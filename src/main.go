@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"log"
 	"os"
-	//"os/exec"
+	"os/exec"
 	"time"
 	"fmt"
 	"strings"
@@ -19,7 +19,7 @@ import (
 // 声明全局变量
 var logger *log.Logger
 var db *sql.DB
-var vip = "127.0.0.1"
+var vip = "192.168.2.201"
 
 // 定义applyVPort结果结构体
 type applyResult struct {
@@ -109,21 +109,20 @@ func rebuildHAProxyConf() {
 			serverInfoPath := strings.Split(serverList[i], ":")
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverInfoPath[1], serverList[i]))
 		}
-		newConfigParts = append(newConfigParts, fmt.Sprintf("Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(conf.ListenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
+		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(conf.ListenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
 	}
 	newConfigParts = append(newConfigParts, strings.Join(conf.ListenStats, "\n\t"))
 	newConfig := strings.Join(newConfigParts, "\n\n")
-	haproxyConfFile, _ := os.OpenFile("../conf/haproxy.conf", os.O_CREATE | os.O_RDWR, 0666)
+	haproxyConfFile, _ := os.OpenFile("/user/local/haproxy/conf/haproxy.conf", os.O_CREATE | os.O_RDWR, 0666)
 	defer haproxyConfFile.Close()
 	haproxyConfFile.WriteString(newConfig)
 	// 重启haproxy
-	/*
-	cmd := exec.Command("/usr/local/haproxy/sbin/haproxy -f /usr/local/haproxy/conf/haproxy.conf -st `/usr/local/haproxy/haproxy.pid`")
+	
+	cmd := exec.Command("/usr/local/haproxy/restart_haproxy.sh")
 	err = cmd.Run()
 	if err != nil {
 		logger.Println(err)
 	}
-	*/
 }
 
 // 申请虚拟ip端口请求处理函数
