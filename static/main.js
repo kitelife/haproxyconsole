@@ -81,7 +81,7 @@ $(function () {
             var resultClass = 'alert alert-error';
             // 如果成功，则清空原表单数据
             if (resp.Success == "true") {
-                $("#server-list").text('');
+                $("#server-list").val('');
                 resultClass = 'alert alert-success'
             }
             // 显示结果

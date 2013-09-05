@@ -25,19 +25,44 @@ type applyResult struct {
 	Msg     string
 }
 
+// listen任务列表数据
 type listenTaskInfo struct {
-	servers string
-	vport int
-	dateTime string
+	Seq	  int
+	Servers  template.HTML
+	Vip      string
+	Vport    int
+	DateTime string
+}
+
+// 页面导航栏高亮数据
+type navHighlight struct {
+	AddTask    bool
+	ListenList bool
+}
+
+//index页面，即添加任务页面，模板数据
+type indexData struct {
+	Nav navHighlight
+}
+
+// listenlist页面模板数据
+type listenListData struct {
+	Nav            navHighlight
+	ListenTaskList []listenTaskInfo
 }
 
 // 主页请求处理函数
 func getHomePage(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("../template/index.html")
+	t, err := template.ParseFiles("../template/header.tmpl", "../template/index.tmpl", "../template/footer.tmpl")
 	if err != nil {
-		fmt.Println("Template Not Found!")
+		fmt.Println(err)
 	}else {
-		t.Execute(w, "")
+		nav := navHighlight{
+			AddTask: true,
+			ListenList: false,
+		}
+		IndexData := indexData{Nav: nav, }
+		t.ExecuteTemplate(w, "index", IndexData)
 	}
 }
 
@@ -65,7 +90,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Println(err)
 	}
-	messageParts := make([]string, 0, 2)
+	messageParts := make([]string,0, 2)
 	messageParts = append(messageParts, vip)
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
@@ -83,26 +108,47 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 }
 
 // 获取haproxy listen任务列表
-func getListenList(w http.ResponseWriter, r *http.Request){
+func getListenList(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query("SELECT servers, vport, datetime FROM haproxymapinfo ORDER BY datetime DESC")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	var listenTasks = make([]listenTaskInfo, 0, 100)
+	var listenTasks = make([]listenTaskInfo,0, 100)
 	var servers string
 	var vport int
 	var dateTime string
+	seq := 1
 	for rows.Next() {
 		err = rows.Scan(&servers, &vport, &dateTime)
-		append(listenTasks, listenTaskInfo{servers: servers, vport: vport, dateTime: dateTime})
+		lti := listenTaskInfo{
+			Seq: seq,
+			Servers: template.HTML(strings.Join(strings.Split(servers, "-"), "<br />")),
+			Vip: vip,
+			Vport: vport,
+			DateTime: dateTime,
+		}
+		listenTasks = append(listenTasks, lti)
+		seq = seq + 1
 	}
 	err = rows.Err()
 	if err != nil {
 		fmt.Println(err)
 	}
-	t, err := template.ParseFiles("../templates/listenlist.html")
-	t.Execute(w, listenTasks)
+
+	Lld := listenListData{
+		Nav: navHighlight{
+			AddTask: false,
+			ListenList: true,
+		},
+		ListenTaskList: listenTasks,
+	}
+
+	t, err := template.ParseFiles("../template/header.tmpl", "../template/listenlist.tmpl", "../template/footer.tmpl")
+	if err != nil {
+		fmt.Println(err)
+	}
+	t.ExecuteTemplate(w, "listenlist", Lld)
 	return
 }
 

@@ -49,3 +49,10 @@
     text-align: center;
 }
 
+.listenlist-table {
+    margin-top: 100px;
+}
+
+.listenlist-table th, .listenlist-table td {
+    text-align: center;
+}

@@ -1,0 +1,28 @@
+{{define "listenlist"}}
+{{template "header"}}
+    <div class="span8 offset2">
+    <table class="table table-bordered listenlist-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>后端机器列表</th>
+                <th>Vip</th>
+                <th>Port</th>
+                <th>申请时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .ListenTaskList}}
+                <tr>
+                    <td>{{.Seq}}</td>
+                    <td>{{.Servers}}</td>
+                    <td>{{.Vip}}</td>
+                    <td>{{.Vport}}</td>
+                    <td>{{.DateTime}}</td>
+                </tr>
+            {{end}}
+        </tbody>
+    </table>
+    </div>
+{{template "footer"}}
+{{end}}
