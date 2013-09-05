@@ -14,11 +14,11 @@
         <tbody>
             {{range .ListenTaskList}}
                 <tr>
-                    <td>{{.Seq}}</td>
-                    <td>{{.Servers}}</td>
-                    <td>{{.Vip}}</td>
-                    <td>{{.Vport}}</td>
-                    <td>{{.DateTime}}</td>
+                    <td class="sequence-number">{{.Seq}}</td>
+                    <td class="servers">{{.Servers}}</td>
+                    <td class="vip">{{.Vip}}</td>
+                    <td class="vport">{{.Vport}}</td>
+                    <td class="date-time">{{.DateTime}}</td>
                 </tr>
             {{end}}
         </tbody>
