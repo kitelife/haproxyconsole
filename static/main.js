@@ -97,4 +97,11 @@ $(function () {
             $("#preview").show();
         });
     });
+    
+    $(".date-time").popover({
+        html: true,
+        placement: 'right',
+        trigger: 'hover',
+        content: '<input type="button" class="btn btn-danger" value="删除该任务" />'
+    });
 });
