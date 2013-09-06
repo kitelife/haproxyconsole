@@ -106,8 +106,7 @@ func rebuildHAProxyConf() {
 		backendServerInfoList := make([]string,0, 10)
 
 		for i := 0; i < len(serverList); i++ {
-			serverInfoPath := strings.Split(serverList[i], ":")
-			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverInfoPath[1], serverList[i]))
+			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
 		}
 		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(conf.ListenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
 	}
@@ -206,6 +205,34 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func delListenTask(w http.ResponseWriter, r *http.Request) {
+
+	type delTaskResult struct {
+		Success string
+		Msg     string
+	}
+
+	success := "true"
+	msg := "已成功删除"
+
+	vport := r.FormValue("taskvport")
+	result, err := db.Exec("DELETE FROM haproxymapinfo WHERE vport=?", vport)
+	if err != nil {
+		logger.Fatalln(err)
+		success = "false"
+		msg = "从数据库删除数据出错！"
+	}
+	rowsAffected, err := result.RowsAffected()
+	if rowsAffected != 1 {
+		success = "false"
+		msg = fmt.Sprintf("数据删除有问题，删除了%d几条", rowsAffected)
+	}
+	rt, _ := json.Marshal(delTaskResult{Success: success, Msg: msg, })
+	fmt.Fprintf(w, string(rt))
+	go rebuildHAProxyConf()
+	return
+}
+
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
 	os.Mkdir("../log/", 0666)
@@ -235,6 +262,7 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
 	http.HandleFunc("/applyvport", applyVPort)
 	http.HandleFunc("/listenlist", getListenList)
+	http.HandleFunc("/dellistentask", delListenTask)
 	http.HandleFunc("/", getHomePage)
 
 	// 启动http服务

@@ -68,7 +68,7 @@ $(function () {
         }
     });
 
-    $("#submit").on("click", function(e){
+    $("#submit").on("click", function (e) {
         e.preventDefault();
 
         var servers = $("#serversToSubmit").val();
@@ -77,7 +77,7 @@ $(function () {
             'dataType': 'json'
         });
 
-        req.done(function(resp){
+        req.done(function (resp) {
             var resultClass = 'alert alert-error';
             // 如果成功，则清空原表单数据
             if (resp.Success == "true") {
@@ -97,11 +97,54 @@ $(function () {
             $("#preview").show();
         });
     });
-    
+
     $(".date-time").popover({
         html: true,
         placement: 'right',
-        trigger: 'hover',
+        trigger: "manual",
         content: '<input type="button" class="btn btn-danger" id="del-this-task" value="删除该任务" />'
+    }).click(function (e) {
+            $(".popover").remove();
+            $(this).popover("toggle");
+            e.preventDefault()
+        });
+
+    $(document).on("click", "#del-this-task", function (e) {
+        var vportTd = $(".popover").siblings('.vport'),
+            vport = $.trim(vportTd.text());
+
+        $(".popover").slideUp(200, function (e) {
+            $(".popover").remove();
+        });
+
+        alertify.set({
+            buttonReverse: true,
+            labels: {
+                ok: "是",
+                cancel: "否"
+            } });
+        alertify.confirm("你确定删除该任务吗？", function (e) {
+            if (e) {
+                alertify.log('你选择了"是"', '', 2000);
+
+                var req = $.ajax({
+                    url: "/dellistentask?taskvport=" + vport,
+                    "dataType": "json"
+                });
+
+                req.done(function (resp) {
+                    if(resp.Success === 'true'){
+                        setTimeout("window.location.href='/listenlist'", 1000);
+                        alertify.log(resp.Msg, "success", 1000);
+                    }else{
+                        alertify.log(resp.Msg, "error", 3000)
+                    }
+
+                });
+
+            } else {
+                alertify.log('你选择了"否"', '', 2000);
+            }
+        });
     });
 });
