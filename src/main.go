@@ -60,7 +60,7 @@ func rebuildHAProxyConf() {
 	newConfigParts := make([]string,0, 50)
 
 	bytes, err := ioutil.ReadFile("../conf/haproxy_conf.json")
-	fmt.Println(string(bytes))
+	//fmt.Println(string(bytes))
 	if err != nil {
 		return
 	}

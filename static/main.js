@@ -135,9 +135,9 @@ $(function () {
                 req.done(function (resp) {
                     if(resp.Success === 'true'){
                         vportTd.parents("tr").remove();
-                        alertify.log(resp.Msg, "success", 1000);
+                        alertify.log(resp.Msg, "success", 3000);
                     }else{
-                        alertify.log(resp.Msg, "error", 3000)
+                        alertify.log(resp.Msg, "error", 5000)
                     }
 
                 });
