@@ -134,7 +134,7 @@ $(function () {
 
                 req.done(function (resp) {
                     if(resp.Success === 'true'){
-                        setTimeout("window.location.href='/listenlist'", 1000);
+                        vportTd.parents("tr").remove();
                         alertify.log(resp.Msg, "success", 1000);
                     }else{
                         alertify.log(resp.Msg, "error", 3000)
