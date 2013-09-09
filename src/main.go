@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+    "sshoperation"
 )
 
 // 声明全局变量
@@ -159,6 +160,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, string(rt))
 	go rebuildHAProxyConf()
+    go sshoperation.ScpHaproxyConf()
 	return
 }
 
@@ -241,6 +243,7 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 	rt, _ := json.Marshal(delTaskResult{Success: success, Msg: msg, })
 	fmt.Fprintf(w, string(rt))
 	go rebuildHAProxyConf()
+    go sshoperation.ScpHaproxyConf()
 	return
 }
 
