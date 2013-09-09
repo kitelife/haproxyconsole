@@ -8,9 +8,26 @@
                 <div class="ui-box-container">
                     <form class="form-horizontal">
                         <div class="control-group">
-                            <div class="controls">
+                            <div class="controls" id="controls-server-list">
                                 <textarea class="input-xxlarge" id="server-list" rows="10"></textarea>
                             </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="comment">说明：</label>
+                            <div class="controls">
+                                <textarea class="input-xlarge" id="comment" rows="4"></textarea>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="logornot">开启日志：</label>
+                                <div class="controls">
+                                    <label class="radio">
+                                        <input type="radio" name="optionRadios" id="yeslog" value="1" checked />是
+                                    </label>
+                                    <label class="radio">
+                                        <input type="radio" name="optionRadios" id="nolog" value="0" />否
+                                    </label>
+                                </div>
                         </div>
                         <div class="control-group">
                             <div class="controls" id="button-group">

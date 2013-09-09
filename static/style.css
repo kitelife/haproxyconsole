@@ -22,7 +22,7 @@
     line-height: 1.6;
 }
 
-.form-horizontal .controls {
+.form-horizontal #controls-server-list {
     margin-left: 0px;
     text-align: center;
 }

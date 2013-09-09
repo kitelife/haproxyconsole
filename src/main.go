@@ -265,7 +265,7 @@ func main() {
 	logger = getLogger()
 
 	// 数据库连接初始化
-	db, err = sql.Open("mysql", "root:haproxy@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
+	db, err = sql.Open("mysql", "root:06122553abc@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
 	if err != nil {
 		logger.Fatalln(err)
 		os.Exit(1)
@@ -274,7 +274,7 @@ func main() {
 
 	// 请求路由
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
-	http.HandleFunc("/applyvport", applyVPort)
+	http.HandleFunc("/appl12yvport", applyVPort)
 	http.HandleFunc("/listenlist", getListenList)
 	http.HandleFunc("/dellistentask", delListenTask)
 	http.HandleFunc("/", getHomePage)
