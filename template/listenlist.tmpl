@@ -1,6 +1,6 @@
 {{define "listenlist"}}
 {{template "header"}}
-    <div class="span8 offset2">
+    <div class="span10 offset1">
     <table class="table table-bordered listenlist-table">
         <thead>
             <tr>
@@ -8,6 +8,8 @@
                 <th>后端机器列表</th>
                 <th>Vip</th>
                 <th>Port</th>
+                <th>说明</th>
+                <th>开启日志</th>
                 <th>申请时间</th>
             </tr>
         </thead>
@@ -18,6 +20,8 @@
                     <td class="servers">{{.Servers}}</td>
                     <td class="vip">{{.Vip}}</td>
                     <td class="vport">{{.Vport}}</td>
+                    <td class="comment">{{.Comment}}</td>
+                    <td class="logornot">{{.LogOrNot}}</td>
                     <td class="date-time">{{.DateTime}}</td>
                 </tr>
             {{end}}

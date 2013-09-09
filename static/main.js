@@ -1,22 +1,22 @@
-$(function () {
+$(function() {
     // 显示提示
     function displayTips(tips) {
-        $("#result").remove();
-        $(".ui-box").after($('<div></div>', {
-            'class': "alert alert-error",
+        $('#result').remove();
+        $('.ui-box').after($('<div></div>', {
+            'class': 'alert alert-error',
             'id': 'result',
             'text': tips
         }));
     }
 
-    $("#preview").on("click", function (e) {
+    $('#preview').on('click', function(e) {
         e.preventDefault();
 
-        $("#result").remove();
+        $('#result').remove();
 
-        var servers = $.trim($("#server-list").val());
+        var servers = $.trim($('#server-list').val());
         if (servers === '') {
-            displayTips("输入不能为空！");
+            displayTips('输入不能为空！');
             return false;
         }
 
@@ -43,101 +43,109 @@ $(function () {
             displayTips('单行格式不对，应为ip:port');
             return false;
         } else {
-            $("#preview").hide();
-            $("#submit").show();
+            $('#preview').hide();
+            $('#submit').show();
 
-            var tbody = $("<tbody></tbody>");
+            var tbody = $('<tbody></tbody>');
             var serverArray = new Array();
             for (var index in ipPortArray) {
                 var ipPort = ipPortArray[index];
-                var tr = $("<tr></tr>");
-                tr.append("<td>" + (parseInt(index) + 1) + "</td>" + "<td>" + ipPort[0] + "</td><td>" + ipPort[1] + "</td>");
+                var tr = $('<tr></tr>');
+                tr.append('<td>' + (parseInt(index) + 1) + '</td>' + '<td>' + ipPort[0] + '</td><td>' + ipPort[1] + '</td>');
                 tbody.append(tr);
                 serverArray.push(ipPort.join(':'));
             }
-            $("tbody").remove();
-            $("table").append(tbody);
+            $('tbody').remove();
+            $('table').append(tbody);
 
-            $("#serversToSubmit").remove();
-            $("table").after($("<input />", {
-                "type": "hidden",
-                "id": "serversToSubmit",
-                "value": serverArray.join('-')
+            $('#serversToSubmit').remove();
+            $('table').after($('<input />', {
+                'type': 'hidden',
+                'id': 'serversToSubmit',
+                'value': serverArray.join('-')
             }));
-            $("#preview-table").slideDown();
+            $('#preview-table').slideDown();
         }
     });
 
-    $("#submit").on("click", function (e) {
+    $('#submit').on('click', function(e) {
         e.preventDefault();
 
-        var servers = $("#serversToSubmit").val();
+        var servers = $('#serversToSubmit').val(),
+            comment = $.trim($('#comment').val()),
+            logOrNot = $("input[name='optionRadios'][checked]").val();
         var req = $.ajax({
-            'url': '/applyvport?servers=' + servers,
+            'type': 'POST'
+            'url': '/applyvport',
+            'data': {
+                servers: servers,
+                comment: comment,
+                logornot: logOrNot
+            },
             'dataType': 'json'
         });
 
-        req.done(function (resp) {
+        req.done(function(resp) {
             var resultClass = 'alert alert-error';
             // 如果成功，则清空原表单数据
-            if (resp.Success == "true") {
-                $("#server-list").val('');
-                resultClass = 'alert alert-success'
+            if (resp.Success == 'true') {
+                $('#server-list').val('');
+                resultClass = 'alert alert-success';
             }
             // 显示结果
-            $("#result").remove();
-            $(".content").append($('<div></div>', {
+            $('#result').remove();
+            $('.ui-box').after($('<div></div>', {
                 'class': resultClass,
                 'id': 'result',
                 'text': resp.Msg
             }));
 
-            $("#preview-table").slideUp();
-            $("#submit").hide();
-            $("#preview").show();
+            $('#preview-table').slideUp();
+            $('#submit').hide();
+            $('#preview').show();
         });
     });
 
-    $(".date-time").popover({
+    $('.date-time').popover({
         html: true,
         placement: 'right',
-        trigger: "manual",
+        trigger: 'manual',
         content: '<input type="button" class="btn btn-danger" id="del-this-task" value="删除该任务" />'
-    }).click(function (e) {
-            $(".popover").remove();
-            $(this).popover("toggle");
-            e.preventDefault()
+    }).click(function(e) {
+            $('.popover').remove();
+            $(this).popover('toggle');
+            e.preventDefault();
         });
 
-    $(document).on("click", "#del-this-task", function (e) {
-        var vportTd = $(".popover").siblings('.vport'),
+    $(document).on('click', '#del-this-task', function(e) {
+        var vportTd = $('.popover').siblings('.vport'),
             vport = $.trim(vportTd.text());
 
-        $(".popover").slideUp(200, function (e) {
-            $(".popover").remove();
+        $('.popover').slideUp(200, function(e) {
+            $('.popover').remove();
         });
 
         alertify.set({
             buttonReverse: true,
             labels: {
-                ok: "是",
-                cancel: "否"
+                ok: '是',
+                cancel: '否'
             } });
-        alertify.confirm("你确定删除该任务吗？", function (e) {
+        alertify.confirm('你确定删除该任务吗？', function(e) {
             if (e) {
                 alertify.log('你选择了"是"', '', 2000);
 
                 var req = $.ajax({
-                    url: "/dellistentask?taskvport=" + vport,
-                    "dataType": "json"
+                    url: '/dellistentask?taskvport=' + vport,
+                    'dataType': 'json'
                 });
 
-                req.done(function (resp) {
-                    if(resp.Success === 'true'){
-                        vportTd.parents("tr").remove();
-                        alertify.log(resp.Msg, "success", 3000);
-                    }else{
-                        alertify.log(resp.Msg, "error", 5000)
+                req.done(function(resp) {
+                    if (resp.Success === 'true') {
+                        vportTd.parents('tr').remove();
+                        alertify.log(resp.Msg, 'success', 3000);
+                    }else {
+                        alertify.log(resp.Msg, 'error', 5000);
                     }
 
                 });
