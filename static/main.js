@@ -75,7 +75,7 @@ $(function() {
             comment = $.trim($('#comment').val()),
             logOrNot = $("input[name='optionRadios'][checked]").val();
         var req = $.ajax({
-            'type': 'POST'
+            'type': 'post',
             'url': '/applyvport',
             'data': {
                 servers: servers,

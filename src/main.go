@@ -1,20 +1,20 @@
 package main
 
 import (
-	"net/http"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"html/template"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
-	"time"
-	"fmt"
-	"strings"
+	"sshoperation"
 	"strconv"
-	"io/ioutil"
-	"encoding/json"
-	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
-    "sshoperation"
+	"strings"
+	"time"
 )
 
 // 声明全局变量
@@ -42,7 +42,7 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("../template/header.tmpl", "../template/index.tmpl", "../template/footer.tmpl")
 	if err != nil {
 		fmt.Println(err)
-	}else {
+	} else {
 		t.ExecuteTemplate(w, "index", nil)
 	}
 }
@@ -58,7 +58,7 @@ func rebuildHAProxyConf() {
 		ListenCommon []string
 	}
 
-	newConfigParts := make([]string,0, 50)
+	newConfigParts := make([]string, 0, 50)
 
 	bytes, err := ioutil.ReadFile("../conf/haproxy_conf.json")
 	//fmt.Println(string(bytes))
@@ -81,17 +81,17 @@ func rebuildHAProxyConf() {
 
 	var servers string
 	var vport int
-    var logOrNot int
+	var logOrNot int
 	for rows.Next() {
 		err = rows.Scan(&servers, &vport, &logOrNot)
 		serverList := strings.Split(servers, "-")
-		backendServerInfoList := make([]string,0, 10)
+		backendServerInfoList := make([]string, 0, 10)
 
 		for i := 0; i < len(serverList); i++ {
-            logDirective := ""
-            if logOrNot == 1 {
-                logDirective = "option tcplog\n\tlog global\n\t"
-            }
+			logDirective := ""
+			if logOrNot == 1 {
+				logDirective = "option tcplog\n\tlog global\n\t"
+			}
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("%sserver %s %s weight 3 check inter 2000 rise 2 fall 3", logDirective, serverList[i], serverList[i]))
 		}
 		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(conf.ListenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
@@ -102,7 +102,7 @@ func rebuildHAProxyConf() {
 	}
 	newConfig := strings.Join(newConfigParts, "\n\n")
 	// 必须使用os.O_TRUNC来清空文件
-	haproxyConfFile, err := os.OpenFile("/usr/local/haproxy/conf/haproxy.conf", os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
+	haproxyConfFile, err := os.OpenFile("/usr/local/haproxy/conf/haproxy.conf", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -129,8 +129,8 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	}
 
 	servers := r.FormValue("servers")
-    comment := r.FormValue("comment")
-    logOrNot := r.FormValue("logornot")
+	comment := r.FormValue("comment")
+	logOrNot := r.FormValue("logornot")
 
 	rows, err := db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport DESC LIMIT 1")
 	if err != nil {
@@ -152,14 +152,14 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Println(err)
 	}
-	messageParts := make([]string,0, 2)
+	messageParts := make([]string, 0, 2)
 	messageParts = append(messageParts, vip)
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
 
 	result := applyResult{
 		Success: "true",
-		Msg: message,
+		Msg:     message,
 	}
 	rt, err := json.Marshal(result)
 	if err != nil {
@@ -167,7 +167,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, string(rt))
 	go rebuildHAProxyConf()
-    go sshoperation.ScpHaproxyConf()
+	go sshoperation.ScpHaproxyConf()
 	return
 }
 
@@ -176,12 +176,12 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 
 	// listen任务列表数据
 	type listenTaskInfo struct {
-		Seq	  int
+		Seq      int
 		Servers  template.HTML
 		Vip      string
 		Vport    int
-        Comment  string
-        LogOrNot int
+		Comment  string
+		LogOrNot int
 		DateTime string
 	}
 	// listenlist页面模板数据
@@ -194,22 +194,22 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	var listenTasks = make([]listenTaskInfo,0, 100)
+	var listenTasks = make([]listenTaskInfo, 0, 100)
 	var servers string
 	var vport int
-    var comment string
-    var logOrNot int
+	var comment string
+	var logOrNot int
 	var dateTime string
 	seq := 1
 	for rows.Next() {
 		err = rows.Scan(&servers, &vport, &comment, &logOrNot, &dateTime)
 		lti := listenTaskInfo{
-			Seq: seq,
-			Servers: template.HTML(strings.Join(strings.Split(servers, "-"), "<br />")),
-			Vip: vip,
-			Vport: vport,
-            Comment: comment,
-            LogOrNot: logOrNot,
+			Seq:      seq,
+			Servers:  template.HTML(strings.Join(strings.Split(servers, "-"), "<br />")),
+			Vip:      vip,
+			Vport:    vport,
+			Comment:  comment,
+			LogOrNot: logOrNot,
 			DateTime: dateTime,
 		}
 		listenTasks = append(listenTasks, lti)
@@ -253,22 +253,22 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 		success = "false"
 		msg = fmt.Sprintf("数据删除有问题，删除了%d几条", rowsAffected)
 	}
-	rt, _ := json.Marshal(delTaskResult{Success: success, Msg: msg, })
+	rt, _ := json.Marshal(delTaskResult{Success: success, Msg: msg})
 	fmt.Fprintf(w, string(rt))
 	go rebuildHAProxyConf()
-    go sshoperation.ScpHaproxyConf()
+	go sshoperation.ScpHaproxyConf()
 	return
 }
 
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
 	os.Mkdir("../log/", 0666)
-	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE | os.O_RDWR | os.O_APPEND, 0666)
+	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	logger = log.New(logFile, "\r\n", log.Ldate | log.Ltime | log.Lshortfile)
+	logger = log.New(logFile, "\r\n", log.Ldate|log.Ltime|log.Lshortfile)
 	return
 }
 
@@ -287,7 +287,7 @@ func main() {
 
 	// 请求路由
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
-	http.HandleFunc("/appl12yvport", applyVPort)
+	http.HandleFunc("/applyvport", applyVPort)
 	http.HandleFunc("/listenlist", getListenList)
 	http.HandleFunc("/dellistentask", delListenTask)
 	http.HandleFunc("/", getHomePage)
@@ -295,6 +295,6 @@ func main() {
 	// 启动http服务
 	err = http.ListenAndServe(":9090", nil)
 	if err != nil {
-		logger.Fatalln("ListenAndServe: " , err)
+		logger.Fatalln("ListenAndServe: ", err)
 	}
 }
