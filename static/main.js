@@ -110,7 +110,7 @@ $(function() {
         html: true,
         placement: 'right',
         trigger: 'manual',
-        content: '<input type="button" class="btn btn-danger" id="del-this-task" value="删除该任务" />'
+        content: '<input type="button" class="btn btn-danger" id="del-this-task" value="删除该任务" /> <input type="button" class="btn btn-warning" id="edit-this-task" value="编辑该任务" />'
     }).click(function(e) {
             $('.popover').remove();
             $(this).popover('toggle');

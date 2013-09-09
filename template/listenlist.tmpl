@@ -21,7 +21,7 @@
                     <td class="vip">{{.Vip}}</td>
                     <td class="vport">{{.Vport}}</td>
                     <td class="comment">{{.Comment}}</td>
-                    <td class="logornot">{{.LogOrNot}}</td>
+                    <td class="logornot">{{if .LogOrNot}}是{{else}}否{{end}}</td>
                     <td class="date-time">{{.DateTime}}</td>
                 </tr>
             {{end}}

@@ -88,13 +88,14 @@ func rebuildHAProxyConf() {
 		backendServerInfoList := make([]string, 0, 10)
 
 		for i := 0; i < len(serverList); i++ {
-			logDirective := ""
-			if logOrNot == 1 {
-				logDirective = "option tcplog\n\tlog global\n\t"
-			}
-			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("%sserver %s %s weight 3 check inter 2000 rise 2 fall 3", logDirective, serverList[i], serverList[i]))
+			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
 		}
-		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(conf.ListenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
+		listenCommon := conf.listenCommon
+		if logOrNot == 1 {
+			logDirective := "option tcplog\n\tlog global\n\t"
+			listenCommon = append(listenCommon, logDirective)
+		}
+		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(listenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
 	}
 	err = rows.Err()
 	if err != nil {
