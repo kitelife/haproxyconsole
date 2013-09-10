@@ -125,21 +125,46 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	comment := r.FormValue("comment")
 	logOrNot := r.FormValue("logornot")
 
-	rows, err := db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport DESC LIMIT 1")
+	rows, err := db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport ASC")
 	if err != nil {
 		logger.Println(err)
 	}
-	var maxiumVPort int
+    /*
+    虚拟ip端口分配算法
+    */
+    // 端口占用标志位数组
+    var portSlots [10000]bool
+    for index := 0; index < 10000; index++ {
+        portSlots[index] = false
+    }
+    portList := make([]int, 0, 500)
+	var port int
 	for rows.Next() {
-		err = rows.Scan(&maxiumVPort)
-		if err == nil {
-			break
-		}
+		err = rows.Scan(&port)
+        portList = append(portList, port)
+        portSlots[port-10000] = true
 	}
-	if maxiumVPort == 0 {
-		maxiumVPort = 10000
-	}
-	vportToAssign := maxiumVPort + 1
+    if err != nil {
+        logger.Println(err)
+    }
+    var vportToAssign int
+    portNum := len(portList)
+    if portNum == 0 {
+        vportToAssign = 10000
+    } else {
+        maxiumVPort := portList[portNum-1]
+	    vportToAssign := maxiumVPort + 1
+        if (portNum + 9999) < maxiumVPort {
+            boundary := maxiumVPort - 9999
+            for index := 0; index < boundary; index++ {
+                if(portSlots[index] == false){
+                    vportToAssign = index + 10000
+                    break
+                }
+            }
+        }
+    }
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 	_, err = db.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
 	if err != nil {
