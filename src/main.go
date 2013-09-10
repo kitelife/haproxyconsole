@@ -153,7 +153,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
         vportToAssign = 10000
     } else {
         maxiumVPort := portList[portNum-1]
-	    vportToAssign := maxiumVPort + 1
+	    vportToAssign = maxiumVPort + 1
         if (portNum + 9999) < maxiumVPort {
             boundary := maxiumVPort - 9999
             for index := 0; index < boundary; index++ {
