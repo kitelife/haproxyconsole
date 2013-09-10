@@ -58,7 +58,7 @@ func rebuildHAProxyConf() {
 		ListenCommon []string
 	}
 
-	newConfigParts := make([]string, 0, 50)
+	newConfigParts := make([]string,0, 50)
 
 	bytes, err := ioutil.ReadFile("../conf/haproxy_conf.json")
 	//fmt.Println(string(bytes))
@@ -85,12 +85,12 @@ func rebuildHAProxyConf() {
 	for rows.Next() {
 		err = rows.Scan(&servers, &vport, &logOrNot)
 		serverList := strings.Split(servers, "-")
-		backendServerInfoList := make([]string, 0, 10)
+		backendServerInfoList := make([]string,0, 10)
 
 		for i := 0; i < len(serverList); i++ {
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
 		}
-		listenCommon := conf.listenCommon
+		listenCommon := conf.ListenCommon
 		if logOrNot == 1 {
 			logDirective := "option tcplog\n\tlog global\n\t"
 			listenCommon = append(listenCommon, logDirective)
@@ -103,7 +103,7 @@ func rebuildHAProxyConf() {
 	}
 	newConfig := strings.Join(newConfigParts, "\n\n")
 	// 必须使用os.O_TRUNC来清空文件
-	haproxyConfFile, err := os.OpenFile("/usr/local/haproxy/conf/haproxy.conf", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+	haproxyConfFile, err := os.OpenFile("/usr/local/haproxy/conf/haproxy.conf", os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -153,7 +153,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Println(err)
 	}
-	messageParts := make([]string, 0, 2)
+	messageParts := make([]string,0, 2)
 	messageParts = append(messageParts, vip)
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
@@ -178,6 +178,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	// listen任务列表数据
 	type listenTaskInfo struct {
 		Seq      int
+		Id       int
 		Servers  template.HTML
 		Vip      string
 		Vport    int
@@ -190,12 +191,13 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 		ListenTaskList []listenTaskInfo
 	}
 
-	rows, err := db.Query("SELECT servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY datetime DESC")
+	rows, err := db.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY datetime DESC")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	var listenTasks = make([]listenTaskInfo, 0, 100)
+	var listenTasks = make([]listenTaskInfo,0, 100)
+	var id int
 	var servers string
 	var vport int
 	var comment string
@@ -203,9 +205,10 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	var dateTime string
 	seq := 1
 	for rows.Next() {
-		err = rows.Scan(&servers, &vport, &comment, &logOrNot, &dateTime)
+		err = rows.Scan(&id, &servers, &vport, &comment, &logOrNot, &dateTime)
 		lti := listenTaskInfo{
 			Seq:      seq,
+			Id: id,
 			Servers:  template.HTML(strings.Join(strings.Split(servers, "-"), "<br />")),
 			Vip:      vip,
 			Vport:    vport,
@@ -261,15 +264,49 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// 编辑任务
+func editTask(w http.ResponseWriter, r *http.Request) {
+
+	type editTaskResult struct {
+		Success string
+		Msg		string
+	}
+
+	success := "true"
+	msg := "更新成功！"
+
+	servers := r.FormValue("servers")
+	comment := r.FormValue("comment")
+	logornot := r.FormValue("logornot")
+	id := r.FormValue("id")
+	now := time.Now().Format("2006-01-02 15:04:05")
+	_, err := db.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
+	if err != nil {
+		logger.Println(err)
+		success = "false"
+		msg = "数据库操作出现问题!"
+	}
+	result := editTaskResult{
+		Success: success,
+		Msg:     msg,
+	}
+	rt, err := json.Marshal(result)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Fprintf(w, string(rt))
+	return
+}
+
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
 	os.Mkdir("../log/", 0666)
-	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE | os.O_RDWR | os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	logger = log.New(logFile, "\r\n", log.Ldate|log.Ltime|log.Lshortfile)
+	logger = log.New(logFile, "\r\n", log.Ldate | log.Ltime | log.Lshortfile)
 	return
 }
 
@@ -289,6 +326,7 @@ func main() {
 	// 请求路由
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
 	http.HandleFunc("/applyvport", applyVPort)
+	http.HandleFunc("/edittask", editTask)
 	http.HandleFunc("/listenlist", getListenList)
 	http.HandleFunc("/dellistentask", delListenTask)
 	http.HandleFunc("/", getHomePage)

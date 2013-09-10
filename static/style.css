@@ -36,7 +36,7 @@
     margin-top: 10px;
 }
 
-#submit {
+#submit, #edit-submit {
     display: none;
 }
 
@@ -55,4 +55,8 @@
 
 .listenlist-table th, .listenlist-table td {
     text-align: center;
+}
+
+#edit-div, #edit-preview-table, .id {
+    display: none;
 }

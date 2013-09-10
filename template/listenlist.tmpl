@@ -1,22 +1,24 @@
 {{define "listenlist"}}
 {{template "header"}}
-    <div class="span10 offset1">
+    <div class="span10 offset1" id="listenlist-div">
     <table class="table table-bordered listenlist-table">
         <thead>
             <tr>
                 <th></th>
+                <th class="id">ID</th>
                 <th>后端机器列表</th>
                 <th>Vip</th>
                 <th>Port</th>
                 <th>说明</th>
                 <th>开启日志</th>
-                <th>申请时间</th>
+                <th>申请/更新时间</th>
             </tr>
         </thead>
         <tbody>
             {{range .ListenTaskList}}
                 <tr>
                     <td class="sequence-number">{{.Seq}}</td>
+                    <td class="id">{{.Id}}</td>
                     <td class="servers">{{.Servers}}</td>
                     <td class="vip">{{.Vip}}</td>
                     <td class="vport">{{.Vport}}</td>
@@ -27,6 +29,56 @@
             {{end}}
         </tbody>
     </table>
+    </div>
+    <div class="span6 offset3">
+        <div class="ui-box" id="edit-div">
+             <div class="ui-box-header">
+                <h4>填写ip:port列表(一行一个)</h4>
+             </div>
+             <div class="ui-box-container">
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <div class="controls" id="controls-server-list">
+                            <textarea class="input-xxlarge" id="server-list" rows="10"></textarea>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="comment">说明：</label>
+                        <div class="controls">
+                            <textarea class="input-xlarge" id="comment" rows="4"></textarea>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">开启日志：</label>
+                        <div class="controls">
+                            <label class="radio">
+                                <input type="radio" name="optionRadios" id="yeslog" value="1" checked />是
+                            </label>
+                            <label class="radio">
+                                <input type="radio" name="optionRadios" id="nolog" value="0" />否
+                            </label>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="controls" id="button-group">
+                            <button class="btn btn-info" id="edit-preview"><i class="icon-eye-open"></i> 更新预览 </button>
+                            <button class="btn btn-primary" id="edit-submit"><i class="icon-ok-sign"></i> 更新提交 </button>
+                        </div>
+                    </div>
+                </form>
+             </div>
+        </div>
+        <div id="preview-table">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>ip</th>
+                        <th>port</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
     </div>
 {{template "footer"}}
 {{end}}
