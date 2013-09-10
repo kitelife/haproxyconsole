@@ -35,8 +35,6 @@
         "stats hide-version"
     ],
     "ListenCommon":[
-        "mode tcp",
-        "option tcplog",
-        "log global"
+        "mode tcp"
     ]
 }
