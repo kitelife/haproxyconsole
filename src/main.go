@@ -329,7 +329,7 @@ func main() {
 	logger = getLogger()
 
 	// 数据库连接初始化
-	db, err = sql.Open("mysql", "root:06122553@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
+	db, err = sql.Open("mysql", "root:haproxy@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
 	if err != nil {
 		logger.Fatalln(err)
 		os.Exit(1)

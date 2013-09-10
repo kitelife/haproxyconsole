@@ -147,6 +147,7 @@ $(function () {
             $('.popover').remove();
             $(this).popover('toggle');
             e.preventDefault();
+            e.stopPropagation();
         });
 
     $(document).on('click', '#del-this-task', function (e) {
