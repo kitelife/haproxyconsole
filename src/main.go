@@ -37,6 +37,12 @@ type indexData struct {
 }
 */
 
+// 状态结果结构体
+type statusResult struct {
+	Success string
+	Msg     string
+}
+
 // 主页请求处理函数
 func getHomePage(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("../template/header.tmpl", "../template/index.tmpl", "../template/footer.tmpl")
@@ -109,25 +115,11 @@ func rebuildHAProxyConf() {
 	}
 	defer haproxyConfFile.Close()
 	haproxyConfFile.WriteString(newConfig)
-
-	// 重启haproxy
-
-	cmd := exec.Command("/usr/local/haproxy/restart_haproxy.sh")
-	err = cmd.Run()
-	if err != nil {
-		logger.Println(err)
-	}
 	return
 }
 
 // 申请虚拟ip端口请求处理函数
 func applyVPort(w http.ResponseWriter, r *http.Request) {
-
-	// 定义applyVPort结果结构体
-	type applyResult struct {
-		Success string
-		Msg     string
-	}
 
 	servers := r.FormValue("servers")
 	comment := r.FormValue("comment")
@@ -158,7 +150,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
 
-	result := applyResult{
+	result := statusResult{
 		Success: "true",
 		Msg:     message,
 	}
@@ -167,8 +159,6 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Fprintf(w, string(rt))
-	go rebuildHAProxyConf()
-	go sshoperation.ScpHaproxyConf()
 	return
 }
 
@@ -237,11 +227,6 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 
 func delListenTask(w http.ResponseWriter, r *http.Request) {
 
-	type delTaskResult struct {
-		Success string
-		Msg     string
-	}
-
 	success := "true"
 	msg := "已成功删除"
 
@@ -257,20 +242,13 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 		success = "false"
 		msg = fmt.Sprintf("数据删除有问题，删除了%d几条", rowsAffected)
 	}
-	rt, _ := json.Marshal(delTaskResult{Success: success, Msg: msg})
+	rt, _ := json.Marshal(statusResult{Success: success, Msg: msg})
 	fmt.Fprintf(w, string(rt))
-	go rebuildHAProxyConf()
-	go sshoperation.ScpHaproxyConf()
 	return
 }
 
 // 编辑任务
 func editTask(w http.ResponseWriter, r *http.Request) {
-
-	type editTaskResult struct {
-		Success string
-		Msg		string
-	}
 
 	success := "true"
 	msg := "更新成功！"
@@ -286,7 +264,42 @@ func editTask(w http.ResponseWriter, r *http.Request) {
 		success = "false"
 		msg = "数据库操作出现问题!"
 	}
-	result := editTaskResult{
+	result := statusResult{
+		Success: success,
+		Msg:     msg,
+	}
+	rt, err := json.Marshal(result)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Fprintf(w, string(rt))
+	return
+}
+
+func applyConf(w http.ResponseWriter, r *http.Request) {
+
+	success := "true"
+	msg := "成功应用！"
+
+	target := r.FormValue("target")
+	rebuildHAProxyConf()
+	if (target == "master") {
+		// 重启haproxy
+		cmd := exec.Command("/usr/local/haproxy/restart_haproxy.sh")
+		err := cmd.Run()
+		if err != nil {
+			logger.Println(err)
+			success = "false"
+			msg = fmt.Sprintf("应用失败！%s", err.Error())
+		}
+	}else {
+		err := sshoperation.ScpHaproxyConf()
+		if err != nil {
+			success = "false"
+			msg = fmt.Sprintf("应用失败！%s", err.Error())
+		}
+	}
+	result := statusResult{
 		Success: success,
 		Msg:     msg,
 	}
@@ -316,7 +329,7 @@ func main() {
 	logger = getLogger()
 
 	// 数据库连接初始化
-	db, err = sql.Open("mysql", "root:haproxy@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
+	db, err = sql.Open("mysql", "root:06122553@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
 	if err != nil {
 		logger.Fatalln(err)
 		os.Exit(1)
@@ -329,6 +342,7 @@ func main() {
 	http.HandleFunc("/edittask", editTask)
 	http.HandleFunc("/listenlist", getListenList)
 	http.HandleFunc("/dellistentask", delListenTask)
+	http.HandleFunc("/applyconf", applyConf)
 	http.HandleFunc("/", getHomePage)
 
 	// 启动http服务

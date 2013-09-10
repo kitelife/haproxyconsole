@@ -1,14 +1,10 @@
-// Copyright 2011 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-// Modify by linuz.ly
 package sshoperation
  
 import (
     "fmt"
     "io/ioutil"
+	"errors"
     "code.google.com/p/go.crypto/ssh"
-    "log"
 )
 var (
     server = "192.168.2.193:36000"
@@ -20,7 +16,7 @@ func (p clientPassword) Password(user string) (string, error) {
     return string(p), nil
 }
  
-func ScpHaproxyConf() {
+func ScpHaproxyConf()(errinfo error) {
     // An SSH client is represented with a slete). Currently only
     // the "password" authentication method is supported.
     //
@@ -37,7 +33,8 @@ func ScpHaproxyConf() {
     }
     client, err := ssh.Dial("tcp", server, config)
     if err != nil {
-        panic("Failed to dial: " + err.Error())
+        errinfo = errors.New(fmt.Sprintf("Failed to dial: %s", err.Error()))
+		return
     }
  
     // Each ClientConn can support multiple interactive sessions,
@@ -46,13 +43,15 @@ func ScpHaproxyConf() {
     // Create a session
     session, err := client.NewSession()
     if err != nil {
-        log.Fatalf("unable to create session: %s", err)
+        errinfo = errors.New(fmt.Sprintf("unable to create session: %s", err.Error()))
+		return
     }
     defer session.Close()
 
     confBytes, err := ioutil.ReadFile("/usr/local/haproxy/conf/haproxy.conf")
     if err != nil {
-        panic("Failed to run: " + err.Error())
+        errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
+		return
     }
     content := string(confBytes)
     go func() {
@@ -63,7 +62,8 @@ func ScpHaproxyConf() {
         fmt.Fprint(w, "\x00")
     }()
     if err := session.Run("/usr/bin/scp -tq /usr/local/haproxy/conf/haproxy.conf && /usr/local/haproxy/restart_haproxy.sh"); err != nil {
-        panic("Failed to run: " + err.Error())
+        errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
+		return
     }
     return
 }

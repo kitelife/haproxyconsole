@@ -124,7 +124,7 @@ $(function () {
                 },
                 'dataType': 'json'
             });
-            req.done(function(resp){
+            req.done(function (resp) {
                 $('#preview-table').slideUp();
                 $('#edit-submit').hide();
                 $('#edit-preview').show();
@@ -211,9 +211,29 @@ $(function () {
 
         $("#server-list").val(servers);
         $("#comment").val(comment);
-        $("input[name='optionRadios']").attr("checked", logOrNot);
+        $("input[name='optionRadios'][value='" + logOrNot + "']").attr("checked", true);
 
         $("#listenlist-div").slideUp();
         $("#edit-div").slideDown();
+    });
+
+    $("#apply-to-master, #apply-to-slave").on("click", function (e) {
+        if ($(this).attr("id") === 'apply-to-master') {
+            var target = "master";
+        } else {
+            target = "slave";
+        }
+        var req = $.ajax({
+            'url': '/applyconf?target=' + target,
+            'dataType': 'json'
+        });
+
+        req.done(function(resp){
+            if (resp.Success === 'true') {
+                alertify.log(resp.Msg, 'success', 3000);
+            } else {
+                alertify.log(resp.Msg, 'error', 5000);
+            }
+        });
     });
 });

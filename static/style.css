@@ -49,8 +49,8 @@
     text-align: center;
 }
 
-.listenlist-table {
-    margin-top: 100px;
+#listenlist-div {
+    margin-top: 75px;
 }
 
 .listenlist-table th, .listenlist-table td {
@@ -59,4 +59,14 @@
 
 #edit-div, #edit-preview-table, .id {
     display: none;
+}
+
+#button-apply-conf {
+    margin-bottom: 20px;
+    float: right;
+    margin-right: 20px;
+}
+
+#apply-to-master {
+    margin-right: 10px;
 }
