@@ -211,7 +211,7 @@ $(function () {
 
         $("#server-list").val(servers);
         $("#comment").val(comment);
-        $("input[name='optionRadio']").attr("checked", logOrNot);
+        $("input[name='optionRadios']").attr("checked", logOrNot);
 
         $("#listenlist-div").slideUp();
         $("#edit-div").slideDown();
