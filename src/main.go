@@ -1,6 +1,8 @@
 package main
 
 import (
+	"applicationDB"
+	"config"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -20,22 +22,6 @@ import (
 // 声明全局变量
 var logger *log.Logger
 var db *sql.DB
-var vip = "192.168.2.201"
-
-// 页面导航栏高亮数据
-/*
-type navHighlight struct {
-	AddTask    string
-	ListenList string
-}
-*/
-
-//index页面，即添加任务页面，模板数据
-/*
-type indexData struct {
-	Nav navHighlight
-}
-*/
 
 // 状态结果结构体
 type statusResult struct {
@@ -53,7 +39,7 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// 根据数据库数据重新生成HAProxy配置文件，并重启HAProxy
+// 根据数据库数据重新生成HAProxy配置文件
 func rebuildHAProxyConf() {
 
 	// 存储配置文件解析结果
@@ -109,7 +95,7 @@ func rebuildHAProxyConf() {
 	}
 	newConfig := strings.Join(newConfigParts, "\n\n")
 	// 必须使用os.O_TRUNC来清空文件
-	haproxyConfFile, err := os.OpenFile("/usr/local/haproxy/conf/haproxy.conf", os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
+	haproxyConfFile, err := os.OpenFile(config.NewHAProxyConfPath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -171,7 +157,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		logger.Println(err)
 	}
 	messageParts := make([]string,0, 2)
-	messageParts = append(messageParts, vip)
+	messageParts = append(messageParts, config.Vip)
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
 
@@ -225,7 +211,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 			Seq:      seq,
 			Id: id,
 			Servers:  template.HTML(strings.Join(strings.Split(servers, "-"), "<br />")),
-			Vip:      vip,
+			Vip:      config.Vip,
 			Vport:    vport,
 			Comment:  comment,
 			LogOrNot: logOrNot,
@@ -250,6 +236,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// 删除任务
 func delListenTask(w http.ResponseWriter, r *http.Request) {
 
 	success := "true"
@@ -301,6 +288,7 @@ func editTask(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// 应用新HAProxy配置文件
 func applyConf(w http.ResponseWriter, r *http.Request) {
 
 	success := "true"
@@ -310,8 +298,9 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 	rebuildHAProxyConf()
 	if (target == "master") {
 		// 重启haproxy
-		cmd := exec.Command("/usr/local/haproxy/restart_haproxy.sh")
-		err := cmd.Run()
+		cmd := fmt.Sprintf("cp %s %s && %s", config.NewHAProxyConfPath, config.MasterConf, config.MasterRestartScript)
+		cmdToRun := exec.Command(cmd)
+		err := cmdToRun.Run()
 		if err != nil {
 			logger.Println(err)
 			success = "false"
@@ -354,7 +343,7 @@ func main() {
 	logger = getLogger()
 
 	// 数据库连接初始化
-	db, err = sql.Open("mysql", "root:06122553@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
+	db, err = sql.Open(config.DBDriverName, config.DBDataSourceName)
 	if err != nil {
 		logger.Fatalln(err)
 		os.Exit(1)

@@ -1,15 +1,16 @@
 package sshoperation
  
 import (
+	"config"
     "fmt"
     "io/ioutil"
 	"errors"
     "code.google.com/p/go.crypto/ssh"
 )
 var (
-    server = "192.168.2.193:36000"
-    username = "root"
-    password = clientPassword("xxx")
+    server = config.SlaveServer
+    username = config.SlaveRemoteUser
+    password = clientPassword(config.SlaveRemotePasswd)
 )
 type clientPassword string
 func (p clientPassword) Password(user string) (string, error) {
@@ -23,7 +24,7 @@ func ScpHaproxyConf()(errinfo error) {
     // To authenticate with the remote server you must pass at least one
     // implementation of ClientAuth via the Auth field in ClientConfig.
  
-    config := &ssh.ClientConfig{
+    conf := &ssh.ClientConfig{
         User: username,
         Auth: []ssh.ClientAuth{
             // ClientAuthPassword wraps a ClientPassword implementation
@@ -31,7 +32,7 @@ func ScpHaproxyConf()(errinfo error) {
             ssh.ClientAuthPassword(password),
         },
     }
-    client, err := ssh.Dial("tcp", server, config)
+    client, err := ssh.Dial("tcp", server, conf)
     if err != nil {
         errinfo = errors.New(fmt.Sprintf("Failed to dial: %s", err.Error()))
 		return
@@ -48,7 +49,7 @@ func ScpHaproxyConf()(errinfo error) {
     }
     defer session.Close()
 
-    confBytes, err := ioutil.ReadFile("/usr/local/haproxy/conf/haproxy.conf")
+    confBytes, err := ioutil.ReadFile(config.NewHAProxyConfPath)
     if err != nil {
         errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
 		return
@@ -61,7 +62,8 @@ func ScpHaproxyConf()(errinfo error) {
         fmt.Fprint(w, content)
         fmt.Fprint(w, "\x00")
     }()
-    if err := session.Run("/usr/bin/scp -tq /usr/local/haproxy/conf/haproxy.conf && /usr/local/haproxy/restart_haproxy.sh"); err != nil {
+	cmd := fmt.Sprintf("/usr/bin/scp -tq %s && %s", config.SlaveConf, config.SlaveRestartScript)
+    if err := session.Run(cmd); err != nil {
         errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
 		return
     }
