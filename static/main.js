@@ -140,6 +140,28 @@ $(function () {
         }
     });
 
+    /*
+     if ($.browser.msie) {
+     $('.date-time').on("click", function (e) {
+     var dateTime = $(this).text();
+     $(this).html($("<div></div>", {
+     "class": "date-time-inner",
+     "text": dateTime
+     }));
+     $('.date-time-inner').popover({
+     html: true,
+     placement: 'right',
+     trigger: 'manual',
+     content: '<div id="popover-buttons"><input type="button" class="btn btn-danger" id="del-this-task" value="删除" /> <input type="button" class="btn btn-warning" id="edit-this-task" value="编辑" /></div>'
+     }).click(function (e) {
+     $('.popover').remove();
+     $(this).popover('toggle');
+     e.preventDefault();
+     e.stopPropagation();
+     });
+     });
+     } else {
+     */
     $('.date-time').popover({
         html: true,
         placement: 'right',
@@ -151,6 +173,7 @@ $(function () {
             e.preventDefault();
             e.stopPropagation();
         });
+    //}
 
     $(document).on('click', '#del-this-task', function (e) {
         var vportTd = $('.popover').siblings('.vport'),
@@ -196,7 +219,8 @@ $(function () {
 
         var parent = $(this).parents(".popover");
         var servers = parent.siblings(".servers").html().replace(/(<(br|BR)\s*\/?>)/g, '\n');
-        var comment = parent.siblings(".comment").html();
+
+        var comment = parent.siblings(".comment").text();
         var logON = $.trim(parent.siblings(".logornot").text()),
             logOrNot = logON === '是' ? '1' : '0';
 
@@ -206,11 +230,6 @@ $(function () {
             'id': 'idToEdit',
             'value': parent.siblings('.id').text()
         }));
-
-        console.log(servers);
-        console.log(comment);
-        console.log(logON);
-        console.log(logOrNot);
 
         $("#server-list").val(servers);
         $("#comment").val(comment);
@@ -231,7 +250,7 @@ $(function () {
             'dataType': 'json'
         });
 
-        req.done(function(resp){
+        req.done(function (resp) {
             if (resp.Success === 'true') {
                 alertify.log(resp.Msg, 'success', 3000);
             } else {

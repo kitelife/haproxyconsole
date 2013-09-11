@@ -66,7 +66,7 @@ func rebuildHAProxyConf() {
 
 	newConfigParts := make([]string,0, 50)
 
-	bytes, err := ioutil.ReadFile("../conf/haproxy_conf.json")
+	bytes, err := ioutil.ReadFile("../conf/haproxy_conf_common.json")
 	//fmt.Println(string(bytes))
 	if err != nil {
 		return
@@ -265,7 +265,7 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 	rowsAffected, err := result.RowsAffected()
 	if rowsAffected != 1 {
 		success = "false"
-		msg = fmt.Sprintf("数据删除有问题，删除了%d几条", rowsAffected)
+		msg = fmt.Sprintf("数据删除有问题，删除了%d条", rowsAffected)
 	}
 	rt, _ := json.Marshal(statusResult{Success: success, Msg: msg})
 	fmt.Fprintf(w, string(rt))
@@ -354,7 +354,7 @@ func main() {
 	logger = getLogger()
 
 	// 数据库连接初始化
-	db, err = sql.Open("mysql", "root:haproxy@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
+	db, err = sql.Open("mysql", "root:06122553@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8")
 	if err != nil {
 		logger.Fatalln(err)
 		os.Exit(1)
