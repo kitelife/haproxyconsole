@@ -1,4 +1,15 @@
 $(function () {
+
+    // 如果是IE浏览器，则不允许使用
+    var ieVersions = new Array("6.0", "7.0", "8.0");
+    if($.browser.msie && $.inArray($.browser.version, ieVersions)){
+        alertify.set({ labels: {
+            "ok": "知道了"
+        } });
+        alertify.alert("请使用Google Chrome或Mozilla Firefox浏览器！暂不支持IE（6、7、8）。");
+        return false;
+    }
+
     // 显示提示
     function displayTips(tips) {
         $('#result').remove();
