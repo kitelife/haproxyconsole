@@ -187,8 +187,8 @@ $(function () {
     //}
 
     $(document).on('click', '#del-this-task', function (e) {
-        var vportTd = $('.popover').siblings('.vport'),
-            vport = $.trim(vportTd.text());
+        var idTd = $('.popover').siblings('.id'),
+            id = $.trim(idTd.text());
 
         $('.popover').slideUp(200, function (e) {
             $('.popover').remove();
@@ -205,7 +205,7 @@ $(function () {
                 alertify.log('你选择了"是"', '', 2000);
 
                 var req = $.ajax({
-                    url: '/dellistentask?taskvport=' + vport,
+                    'url': '/dellistentask?taskid=' + id,
                     'dataType': 'json'
                 });
 

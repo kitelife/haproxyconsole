@@ -1,72 +1,62 @@
 package config
 
-/*
-主从HAProxy的VIP
-*/
-var Vip = "192.168.2.201"
+import "github.com/robfig/config"
 
+type ConfigInfo struct {
+	MasterConf          string
+	MasterRestartScript string
+	SlaveServer         string
+	SlaveRemoteUser     string
+	SlaveRemotePasswd   string
+	SlaveConf           string
+	SlaveRestartScript  string
+	StoreScheme         int
+	DBDriverName        string
+	DBDataSourceName    string
+	FileToReplaceDB     string
+	Vip                 string
+	NewHAProxyConfPath  string
+}
 
-/********************************************************************************
- ********************************************************************************/
+func ParseConfig(configPath string) (ci ConfigInfo, err error) {
+	conf, err := config.ReadDefault(configPath)
 
+	masterConf, _ := conf.String("master", "MasterConf")
+	masterRestartScript, _ := conf.String("master", "MasterRestartScript")
 
-/*
-主HAProxy配置文件的路径
-*/
-var MasterConf = "/usr/local/haproxy/conf/haproxy.conf"
-/*
-主HAProxy重启脚本的路径
-*/
-var MasterRestartScript = "/usr/local/haproxy/restart_haproxy.sh"
+	slaveServer, _  := conf.String("slave", "SlaveServer")
+	slaveRemoteUser, _ := conf.String("slave", "SlaveRemoteUser")
+	slaveRemotePasswd, _ := conf.String("slave", "SlaveRemotePasswd")
 
+	slaveConf, _ := conf.String("slave", "SlaveConf")
+	slaveRestartScript, _ := conf.String("slave", "SlaveRestartScript")
 
-/********************************************************************************
- ********************************************************************************/
+	storeScheme, _ := conf.Int("store", "StoreScheme")
 
+	dbDriverName, _ := conf.String("store", "DBDriverName")
+	dbDataSourceName, _ := conf.String("store", "DBDataSourceName")
 
-/*
-从HAProxy配置文件的路径
-*/
-var SlaveConf = "/usr/local/haproxy/conf/haproxy.conf"
-/*
-从HAProxy重启脚本的路径
-*/
-var SlaveRestartScript = "/usr/local/haproxy/restart_haproxy.sh"
-/*
-从HAProxy机器远程登录：服务器ip:port,用户名,密码
-*/
-var SlaveServer = "192.168.2.193:36000"
-var SlaveRemoteUser = "root"
-var SlaveRemotePasswd = "first2012++"
+	fileToReplaceDB, _ := conf.String("store", "FileToReplaceDB")
 
+	vip, _ := conf.String("others", "Vip")
 
-/********************************************************************************
- ********************************************************************************/
+	newHAProxyConfPath, _ := conf.String("others", "NewHAProxyConfPath")
 
+	ci = ConfigInfo{
+		MasterConf: masterConf,
+		MasterRestartScript: masterRestartScript,
+		SlaveServer: slaveServer,
+		SlaveRemoteUser: slaveRemoteUser,
+		SlaveRemotePasswd: slaveRemotePasswd,
+		SlaveConf: slaveConf,
+		SlaveRestartScript: slaveRestartScript,
+		StoreScheme: storeScheme,
+		DBDriverName: dbDriverName,
+		DBDataSourceName: dbDataSourceName,
+		FileToReplaceDB: fileToReplaceDB,
+		Vip: vip,
+		NewHAProxyConfPath: newHAProxyConfPath,
+	}
 
-/*
-根据负载均衡任务数据生成的HAProxy新配置文件存放路径
-*/
-var NewHAProxyConfPath = "../conf/haproxy_new.conf"
-
-
-/********************************************************************************
- ********************************************************************************/
-
-
-/*
-数据存储方式：数据库(DB,以0表示)与文件(FILE,以1表示)两种
-*/
-var StoreScheme = 0
-
-/*
-MySQL数据库连接信息
-*/
-var DBDriverName = "mysql"
-var DBDataSourceName = "root:06122553@tcp(127.0.0.1:3306)/haproxyconsole?charset=utf8"
-
-/*
-若采用文件来存储负载均衡任务数据，则需指定该文件路径
-负载均衡任务数据文件路径
-*/
-var FileToReplaceDB = "../conf/DB.json"
+	return
+}

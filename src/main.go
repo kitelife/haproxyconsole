@@ -3,7 +3,6 @@ package main
 import (
 	"applicationDB"
 	"config"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
@@ -21,7 +20,8 @@ import (
 
 // 声明全局变量
 var logger *log.Logger
-var db *sql.DB
+var db *applicationDB.DB
+var appConf config.ConfigInfo
 
 // 状态结果结构体
 type statusResult struct {
@@ -66,36 +66,31 @@ func rebuildHAProxyConf() {
 	newConfigParts = append(newConfigParts, strings.Join(conf.Defaults, "\n\t"))
 	newConfigParts = append(newConfigParts, strings.Join(conf.ListenStats, "\n\t"))
 
-	rows, err := db.Query("SELECT servers, vport, logornot FROM haproxymapinfo ORDER BY vport ASC")
+	dataList, err := db.QueryNewConfData()
 	if err != nil {
 		logger.Println(err)
 	}
 
-	var servers string
-	var vport int
-	var logOrNot int
-	for rows.Next() {
-		err = rows.Scan(&servers, &vport, &logOrNot)
-		serverList := strings.Split(servers, "-")
+	taskNum := len(dataList)
+	for index := 1; index < taskNum; index++ {
+		task := dataList[index]
+		serverList := strings.Split(task.Servers, "-")
 		backendServerInfoList := make([]string,0, 10)
-
-		for i := 0; i < len(serverList); i++ {
+		serverNum := len(serverList)
+		for i := 0; i < serverNum; i++ {
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
 		}
 		listenCommon := conf.ListenCommon
-		if logOrNot == 1 {
+		if task.LogOrNot == 1 {
 			logDirective := "option tcplog\n\tlog global\n\t"
 			listenCommon = append(listenCommon, logDirective)
 		}
-		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", vport, vport, strings.Join(listenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
+		newConfigParts = append(newConfigParts, fmt.Sprintf("listen Listen-%d\n\tbind *:%d\n\t%s\n\n\t%s", task.VPort, task.VPort, strings.Join(listenCommon, "\n\t"), strings.Join(backendServerInfoList, "\n\t")))
 	}
-	err = rows.Err()
-	if err != nil {
-		fmt.Println(err)
-	}
+
 	newConfig := strings.Join(newConfigParts, "\n\n")
 	// 必须使用os.O_TRUNC来清空文件
-	haproxyConfFile, err := os.OpenFile(config.NewHAProxyConfPath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
+	haproxyConfFile, err := os.OpenFile(appConf.NewHAProxyConfPath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -111,53 +106,47 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	comment := r.FormValue("comment")
 	logOrNot := r.FormValue("logornot")
 
-	rows, err := db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport ASC")
+	rows, err := db.QueryVPort()
 	if err != nil {
 		logger.Println(err)
 	}
-    /*
-    虚拟ip端口分配算法
-    */
-    // 端口占用标志位数组
-    var portSlots [10000]bool
-    for index := 0; index < 10000; index++ {
-        portSlots[index] = false
-    }
-    portList := make([]int, 0, 500)
-	var port int
-	for rows.Next() {
-		err = rows.Scan(&port)
-        portList = append(portList, port)
-        portSlots[port-10000] = true
+	/*
+	虚拟ip端口分配算法
+	*/
+	// 端口占用标志位数组
+	var portSlots [10000]bool
+	for index := 0; index < 10000; index++ {
+		portSlots[index] = false
 	}
-    if err != nil {
-        logger.Println(err)
-    }
-    var vportToAssign int
-    portNum := len(portList)
-    if portNum == 0 {
-        vportToAssign = 10000
-    } else {
-        maxiumVPort := portList[portNum-1]
-	    vportToAssign = maxiumVPort + 1
-        if (portNum + 9999) < maxiumVPort {
-            boundary := maxiumVPort - 9999
-            for index := 0; index < boundary; index++ {
-                if(portSlots[index] == false){
-                    vportToAssign = index + 10000
-                    break
-                }
-            }
-        }
-    }
+	rowNum := len(rows)
+	for index := 0; index < rowNum; index++ {
+		port := rows[index]
+		portSlots[port - 10000] = true
+	}
+	var vportToAssign int
+	if rowNum == 0 {
+		vportToAssign = 10000
+	} else {
+		maxiumVPort := rows[rowNum - 1]
+		vportToAssign = maxiumVPort + 1
+		if (rowNum + 9999) < maxiumVPort {
+			boundary := maxiumVPort - 9999
+			for index := 0; index < boundary; index++ {
+				if (portSlots[index] == false) {
+					vportToAssign = index + 10000
+					break
+				}
+			}
+		}
+	}
 
 	now := time.Now().Format("2006-01-02 15:04:05")
-	_, err = db.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
+	err = db.InsertNewTask(servers, vportToAssign, comment, logOrNot, now)
 	if err != nil {
 		logger.Println(err)
 	}
 	messageParts := make([]string,0, 2)
-	messageParts = append(messageParts, config.Vip)
+	messageParts = append(messageParts, appConf.Vip)
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
 
@@ -192,37 +181,28 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 		ListenTaskList []listenTaskInfo
 	}
 
-	rows, err := db.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY datetime DESC")
+	rows, err := db.QueryForTaskList()
 	if err != nil {
-		fmt.Println(err)
+		logger.Println(err)
 	}
 
 	var listenTasks = make([]listenTaskInfo,0, 100)
-	var id int
-	var servers string
-	var vport int
-	var comment string
-	var logOrNot int
-	var dateTime string
 	seq := 1
-	for rows.Next() {
-		err = rows.Scan(&id, &servers, &vport, &comment, &logOrNot, &dateTime)
+	rowNum := len(rows)
+	for index := 0; index < rowNum; index++ {
+		row := rows[index]
 		lti := listenTaskInfo{
 			Seq:      seq,
-			Id: id,
-			Servers:  template.HTML(strings.Join(strings.Split(servers, "-"), "<br />")),
-			Vip:      config.Vip,
-			Vport:    vport,
-			Comment:  comment,
-			LogOrNot: logOrNot,
-			DateTime: dateTime,
+			Id: row.Id,
+			Servers:  template.HTML(strings.Join(strings.Split(row.Servers, "-"), "<br />")),
+			Vip:      appConf.Vip,
+			Vport:    row.VPort,
+			Comment:  row.Comment,
+			LogOrNot: row.LogOrNot,
+			DateTime: row.DateTime,
 		}
 		listenTasks = append(listenTasks, lti)
 		seq = seq + 1
-	}
-	err = rows.Err()
-	if err != nil {
-		fmt.Println(err)
 	}
 	Lld := listenListData{
 		ListenTaskList: listenTasks,
@@ -242,12 +222,12 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 	success := "true"
 	msg := "已成功删除"
 
-	vport := r.FormValue("taskvport")
-	result, err := db.Exec("DELETE FROM haproxymapinfo WHERE vport=?", vport)
+	id := r.FormValue("taskid")
+	result, err := db.DeleteTask(id)
 	if err != nil {
 		logger.Fatalln(err)
 		success = "false"
-		msg = "从数据库删除数据出错！"
+		msg = "删除数据出错！"
 	}
 	rowsAffected, err := result.RowsAffected()
 	if rowsAffected != 1 {
@@ -270,11 +250,11 @@ func editTask(w http.ResponseWriter, r *http.Request) {
 	logornot := r.FormValue("logornot")
 	id := r.FormValue("id")
 	now := time.Now().Format("2006-01-02 15:04:05")
-	_, err := db.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
+	err := db.UpdateTaskInfo(servers, comment, logornot, now, id)
 	if err != nil {
 		logger.Println(err)
 		success = "false"
-		msg = "数据库操作出现问题!"
+		msg = "数据存储操作出现问题!"
 	}
 	result := statusResult{
 		Success: success,
@@ -298,7 +278,7 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 	rebuildHAProxyConf()
 	if (target == "master") {
 		// 重启haproxy
-		cmd := fmt.Sprintf("cp %s %s && %s", config.NewHAProxyConfPath, config.MasterConf, config.MasterRestartScript)
+		cmd := fmt.Sprintf("cp %s %s && %s", appConf.NewHAProxyConfPath, appConf.MasterConf, appConf.MasterRestartScript)
 		cmdToRun := exec.Command(cmd)
 		err := cmdToRun.Run()
 		if err != nil {
@@ -307,7 +287,7 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 			msg = fmt.Sprintf("应用失败！%s", err.Error())
 		}
 	}else {
-		err := sshoperation.ScpHaproxyConf()
+		err := sshoperation.ScpHaproxyConf(appConf)
 		if err != nil {
 			success = "false"
 			msg = fmt.Sprintf("应用失败！%s", err.Error())
@@ -341,9 +321,9 @@ func main() {
 
 	var err error
 	logger = getLogger()
-
-	// 数据库连接初始化
-	db, err = sql.Open(config.DBDriverName, config.DBDataSourceName)
+	appConf = config.ParseConfig("../conf/app_conf.ini")
+	// 存储连接初始化
+	db, err = applicationDB.InitStoreConnection(appConf)
 	if err != nil {
 		logger.Fatalln(err)
 		os.Exit(1)

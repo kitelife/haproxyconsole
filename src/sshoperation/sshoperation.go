@@ -7,17 +7,18 @@ import (
 	"errors"
     "code.google.com/p/go.crypto/ssh"
 )
-var (
-    server = config.SlaveServer
-    username = config.SlaveRemoteUser
-    password = clientPassword(config.SlaveRemotePasswd)
-)
+
 type clientPassword string
 func (p clientPassword) Password(user string) (string, error) {
     return string(p), nil
 }
  
-func ScpHaproxyConf()(errinfo error) {
+func ScpHaproxyConf(appConf config.ConfigInfo)(errinfo error) {
+
+	server := appConf.SlaveServer
+	username := appConf.SlaveRemoteUser
+	password := clientPassword(appConf.SlaveRemotePasswd)
+
     // An SSH client is represented with a slete). Currently only
     // the "password" authentication method is supported.
     //
@@ -49,7 +50,7 @@ func ScpHaproxyConf()(errinfo error) {
     }
     defer session.Close()
 
-    confBytes, err := ioutil.ReadFile(config.NewHAProxyConfPath)
+    confBytes, err := ioutil.ReadFile(appConf.NewHAProxyConfPath)
     if err != nil {
         errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
 		return
@@ -62,7 +63,7 @@ func ScpHaproxyConf()(errinfo error) {
         fmt.Fprint(w, content)
         fmt.Fprint(w, "\x00")
     }()
-	cmd := fmt.Sprintf("/usr/bin/scp -tq %s && %s", config.SlaveConf, config.SlaveRestartScript)
+	cmd := fmt.Sprintf("/usr/bin/scp -tq %s && %s", appConf.SlaveConf, appConf.SlaveRestartScript)
     if err := session.Run(cmd); err != nil {
         errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
 		return
