@@ -211,7 +211,7 @@ $(function () {
 
                 req.done(function (resp) {
                     if (resp.Success === 'true') {
-                        vportTd.parents('tr').remove();
+                        idTd.parents('tr').remove();
                         alertify.log(resp.Msg, 'success', 3000);
                     } else {
                         alertify.log(resp.Msg, 'error', 5000);

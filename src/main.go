@@ -20,7 +20,7 @@ import (
 
 // 声明全局变量
 var logger *log.Logger
-var db *applicationDB.DB
+var db applicationDB.DB
 var appConf config.ConfigInfo
 
 // 状态结果结构体
@@ -110,23 +110,26 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Println(err)
 	}
+	fmt.Println(rows)
+	rowNum := len(rows)
+	fmt.Println(rowNum)
 	/*
 	虚拟ip端口分配算法
 	*/
 	// 端口占用标志位数组
-	var portSlots [10000]bool
-	for index := 0; index < 10000; index++ {
-		portSlots[index] = false
-	}
-	rowNum := len(rows)
-	for index := 0; index < rowNum; index++ {
-		port := rows[index]
-		portSlots[port - 10000] = true
-	}
 	var vportToAssign int
+
 	if rowNum == 0 {
 		vportToAssign = 10000
-	} else {
+	}else {
+		var portSlots [10000]bool
+		for index := 0; index < 10000; index++ {
+			portSlots[index] = false
+		}
+		for index := 0; index < rowNum; index++ {
+			port := rows[index]
+			portSlots[port - 10000] = true
+		}
 		maxiumVPort := rows[rowNum - 1]
 		vportToAssign = maxiumVPort + 1
 		if (rowNum + 9999) < maxiumVPort {
@@ -141,7 +144,9 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now().Format("2006-01-02 15:04:05")
-	err = db.InsertNewTask(servers, vportToAssign, comment, logOrNot, now)
+	logornot, _ := strconv.Atoi(logOrNot)
+	fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
+	err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
 	if err != nil {
 		logger.Println(err)
 	}
@@ -182,6 +187,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.QueryForTaskList()
+	fmt.Printf("getListenList - rows: %v\n", rows)
 	if err != nil {
 		logger.Println(err)
 	}
@@ -222,7 +228,8 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 	success := "true"
 	msg := "已成功删除"
 
-	id := r.FormValue("taskid")
+	taskId := r.FormValue("taskid")
+	id, _ := strconv.Atoi(taskId)
 	result, err := db.DeleteTask(id)
 	if err != nil {
 		logger.Fatalln(err)
@@ -250,7 +257,9 @@ func editTask(w http.ResponseWriter, r *http.Request) {
 	logornot := r.FormValue("logornot")
 	id := r.FormValue("id")
 	now := time.Now().Format("2006-01-02 15:04:05")
-	err := db.UpdateTaskInfo(servers, comment, logornot, now, id)
+	logOrNot, _ := strconv.Atoi(logornot)
+	taskId, _ := strconv.Atoi(id)
+	err := db.UpdateTaskInfo(servers, comment, logOrNot, now, taskId)
 	if err != nil {
 		logger.Println(err)
 		success = "false"
@@ -321,7 +330,7 @@ func main() {
 
 	var err error
 	logger = getLogger()
-	appConf = config.ParseConfig("../conf/app_conf.ini")
+	appConf, _ = config.ParseConfig("../conf/app_conf.ini")
 	// 存储连接初始化
 	db, err = applicationDB.InitStoreConnection(appConf)
 	if err != nil {

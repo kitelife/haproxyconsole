@@ -5,6 +5,8 @@ import (
 	"config"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 )
@@ -31,10 +33,15 @@ type DB interface {
 	QueryForTaskList() ([]DataRow, error)
 	DeleteTask(int) (sql.Result, error)
 	UpdateTaskInfo(string, string, int, string, int) (error)
+	Close() (error)
 }
 
-type database sql.DB
-type fileForStore os.File
+type database struct {
+	Db *sql.DB
+}
+type fileForStore struct {
+	F *os.File
+}
 
 // 该辅助函数来自golang标准库io/ioutil/ioutil.go
 func readAll(r io.Reader, capacity int64) (b []byte, err error) {
@@ -56,14 +63,15 @@ func readAll(r io.Reader, capacity int64) (b []byte, err error) {
 }
 
 func readJson(f fileForStore) (allData []DataRow, err error) {
+	f.F.Seek(0, 0)
 	var n int64
-
-	if fi, err := f.Stat(); err == nil {
+	if fi, err := f.F.Stat(); err == nil {
 		if size := fi.Size(); size < 1e9 {
 			n = size
 		}
 	}
-	content, err := readAll(f, n + bytes.MinRead)
+	content, err := readAll(f.F, n + bytes.MinRead)
+	f.F.Seek(0, 0)
 	err = json.Unmarshal(content, &allData)
 	return
 }
@@ -92,7 +100,7 @@ func (rdff ResultDeleteFromFile) RowsAffected() (int64, error) {
 // QueryNewConfData() ([]NewConfDataType, error)
 func (d database) QueryNewConfData() (dataList []NewConfDataType, err error) {
 	dataList = make([]NewConfDataType,0, 100)
-	rows, err := d.Query("SELECT servers, vport, logornot FROM haproxymapinfo ORDER BY vport ASC")
+	rows, err := d.Db.Query("SELECT servers, vport, logornot FROM haproxymapinfo ORDER BY vport ASC")
 	var servers string
 	var vport int
 	var logOrNot int
@@ -117,7 +125,7 @@ func (f fileForStore) QueryNewConfData() (dataList []NewConfDataType, err error)
 // SELECT vport FROM haproxymapinfo ORDER BY vport ASC
 // QueryVPort() ([]int, error)
 func (d database) QueryVPort() (vportList []int, err error) {
-	rows, err := d.Query("SELECT vport FROM haproxymapinfo ORDER BY vport ASC")
+	rows, err := d.Db.Query("SELECT vport FROM haproxymapinfo ORDER BY vport ASC")
 	vportList = make([]int,0, 100)
 	var vport int
 	for rows.Next() {
@@ -129,7 +137,7 @@ func (d database) QueryVPort() (vportList []int, err error) {
 
 func (f fileForStore) QueryVPort() (vportList []int, err error) {
 	allData, err := readJson(f)
-	vportList = make([]int, 100)
+	vportList = make([]int,0, 100)
 	taskNum := len(allData)
 	for index := 0; index < taskNum; index++ {
 		vportList = append(vportList, allData[index].VPort)
@@ -140,20 +148,24 @@ func (f fileForStore) QueryVPort() (vportList []int, err error) {
 // db.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
 // InsertNewTask(string, int, string, int, string) (error)
 func (d database) InsertNewTask(servers string, vportToAssign int , comment string, logOrNot int, now string) (err error) {
-	_, err := d.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
+	_, err = d.Db.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
 	return
 }
 
 func (f fileForStore) InsertNewTask(servers string, vportToAssign int, comment string, logOrNot int, now string) (err error) {
 	allData, err := readJson(f)
 	rowNum := len(allData)
-	maxId := 0
-	for index := 0; index < rowNum; index ++ {
-		row := allData[index]
-		if row.Id > maxId {
-			maxId = row.Id
+	maxId := -1
+	if rowNum > 0 {
+		maxId = 0
+		for index := 0; index < rowNum; index ++ {
+			row := allData[index]
+			if row.Id > maxId {
+				maxId = row.Id
+			}
 		}
 	}
+	fmt.Printf("maxId: %d", maxId)
 	oneRowData := DataRow{
 		Id: maxId + 1,
 		Servers: servers,
@@ -163,17 +175,19 @@ func (f fileForStore) InsertNewTask(servers string, vportToAssign int, comment s
 		DateTime: now,
 	}
 	allData = append(allData, oneRowData)
-	// 直接截断/清空文件，然后整个写入
-	err = f.Truncate(0)
-	dataJson, err := json.Marshal(allData)
-	f.Write(dataJson)
+	fmt.Println(allData)
+	fmt.Printf("InsertNewTask - allData: %v\n", allData)
+	dataJson, err := json.MarshalIndent(allData, "", "    ")
+	f.F.Truncate(0)
+	f.F.Write(dataJson)
+	f.F.Sync()
 	return
 }
 
 // SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC
 // QueryForTaskList() ([]DataRow, error)
 func (d database) QueryForTaskList() (taskList []DataRow, err error) {
-	rows, err := d.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
+	rows, err := d.Db.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
 	var id int
 	var servers string
 	var vport int
@@ -189,14 +203,14 @@ func (d database) QueryForTaskList() (taskList []DataRow, err error) {
 }
 
 func (f fileForStore) QueryForTaskList() (taskList []DataRow, err error) {
-	taskList, err := readJson(f)
+	taskList, err = readJson(f)
 	return
 }
 
 // db.Exec("DELETE FROM haproxymapinfo WHERE id=?", id)
 // DeleteTask(int) (Result, error)
 func (d database) DeleteTask(id int) (result sql.Result, err error) {
-	result, err := d.Exec("DELETE FROM haproxymapinfo WHERE id=?", id)
+	result, err = d.Db.Exec("DELETE FROM haproxymapinfo WHERE id=?", id)
 	return
 }
 
@@ -210,9 +224,10 @@ func (f fileForStore) DeleteTask(id int) (result sql.Result, err error) {
 			dataAfterDel = append(dataAfterDel, row)
 		}
 	}
-	err = f.Truncate(0)
-	dataJson, err := json.Marshal(dataAfterDel)
-	f.Write(dataJson)
+	dataJson, err := json.MarshalIndent(dataAfterDel, "", "    ")
+	f.F.Truncate(0)
+	f.F.Write(dataJson)
+	f.F.Sync()
 	rdff := ResultDeleteFromFile{LastIdInsert:-1, AffectedRows: 1}
 	return rdff, nil
 }
@@ -220,7 +235,7 @@ func (f fileForStore) DeleteTask(id int) (result sql.Result, err error) {
 // db.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
 // UpdateTaskInfo(string, string, int, string, int) (error)
 func (d database) UpdateTaskInfo(servers string, comment string, logornot int, now string, id int) (err error) {
-	_, err := d.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
+	_, err = d.Db.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
 	return
 }
 
@@ -241,19 +256,43 @@ func (f fileForStore) UpdateTaskInfo(servers string, comment string, logornot in
 			allData[index] = dataOneRow
 		}
 	}
-	err = f.Truncate(0)
-	dataJson, err := json.Marshal(allData)
-	f.Write(dataJson)
+	dataJson, err := json.MarshalIndent(allData, "", "    ")
+	f.F.Truncate(0)
+	f.F.Write(dataJson)
+	f.F.Sync()
 	return
 }
 
-func InitStoreConnection(appConf config.ConfigInfo) (db DB, err error) {
+// Close()(error)
+func (d database) Close() (err error) {
+	err = d.Db.Close()
+	return
+}
+
+func (f fileForStore) Close() (err error) {
+	err = f.F.Close()
+	return
+}
+
+func InitStoreConnection(appConf config.ConfigInfo) (db DB, e error) {
 	if appConf.StoreScheme == 0 {
-		db, err = sql.Open(appConf.DBDriverName, appConf.DBDataSourceName)
+		d, err := sql.Open(appConf.DBDriverName, appConf.DBDataSourceName)
+		if err != nil {
+			e = errors.New("数据库连接出错！")
+		}
+		db = database{
+			Db: d,
+		}
 	}
 
 	if appConf.StoreScheme == 1 {
-		db, err = os.OpenFile(appConf.FileToReplaceDB, os.O_CREATE | os.O_RDWR | os.O_APPEND, 0666)
+		f, err := os.OpenFile(appConf.FileToReplaceDB, os.O_CREATE | os.O_RDWR, 0666)
+		if err != nil {
+			e = errors.New("文件打开出错！")
+		}
+		db = fileForStore {
+			F:f,
+		}
 	}
 	return
 }
