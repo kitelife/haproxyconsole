@@ -50,7 +50,7 @@ func rebuildHAProxyConf() {
 		ListenCommon []string
 	}
 
-	newConfigParts := make([]string,0, 50)
+	newConfigParts := make([]string, 0, 50)
 
 	bytes, err := ioutil.ReadFile("../conf/haproxy_conf_common.json")
 	//fmt.Println(string(bytes))
@@ -75,7 +75,7 @@ func rebuildHAProxyConf() {
 	for index := 1; index < taskNum; index++ {
 		task := dataList[index]
 		serverList := strings.Split(task.Servers, "-")
-		backendServerInfoList := make([]string,0, 10)
+		backendServerInfoList := make([]string, 0, 10)
 		serverNum := len(serverList)
 		for i := 0; i < serverNum; i++ {
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
@@ -90,7 +90,7 @@ func rebuildHAProxyConf() {
 
 	newConfig := strings.Join(newConfigParts, "\n\n")
 	// 必须使用os.O_TRUNC来清空文件
-	haproxyConfFile, err := os.OpenFile(appConf.NewHAProxyConfPath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
+	haproxyConfFile, err := os.OpenFile(appConf.NewHAProxyConfPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -110,32 +110,30 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Println(err)
 	}
-	fmt.Println(rows)
 	rowNum := len(rows)
-	fmt.Println(rowNum)
 	/*
-	虚拟ip端口分配算法
+		虚拟ip端口分配算法
 	*/
 	// 端口占用标志位数组
 	var vportToAssign int
 
 	if rowNum == 0 {
 		vportToAssign = 10000
-	}else {
+	} else {
 		var portSlots [10000]bool
 		for index := 0; index < 10000; index++ {
 			portSlots[index] = false
 		}
 		for index := 0; index < rowNum; index++ {
 			port := rows[index]
-			portSlots[port - 10000] = true
+			portSlots[port-10000] = true
 		}
-		maxiumVPort := rows[rowNum - 1]
+		maxiumVPort := rows[rowNum-1]
 		vportToAssign = maxiumVPort + 1
 		if (rowNum + 9999) < maxiumVPort {
 			boundary := maxiumVPort - 9999
 			for index := 0; index < boundary; index++ {
-				if (portSlots[index] == false) {
+				if portSlots[index] == false {
 					vportToAssign = index + 10000
 					break
 				}
@@ -150,7 +148,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Println(err)
 	}
-	messageParts := make([]string,0, 2)
+	messageParts := make([]string, 0, 2)
 	messageParts = append(messageParts, appConf.Vip)
 	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
 	message := strings.Join(messageParts, ":")
@@ -192,14 +190,14 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 		logger.Println(err)
 	}
 
-	var listenTasks = make([]listenTaskInfo,0, 100)
+	var listenTasks = make([]listenTaskInfo, 0, 100)
 	seq := 1
 	rowNum := len(rows)
 	for index := 0; index < rowNum; index++ {
 		row := rows[index]
 		lti := listenTaskInfo{
 			Seq:      seq,
-			Id: row.Id,
+			Id:       row.Id,
 			Servers:  template.HTML(strings.Join(strings.Split(row.Servers, "-"), "<br />")),
 			Vip:      appConf.Vip,
 			Vport:    row.VPort,
@@ -285,7 +283,7 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 
 	target := r.FormValue("target")
 	rebuildHAProxyConf()
-	if (target == "master") {
+	if target == "master" {
 		// 重启haproxy
 		cmd := fmt.Sprintf("cp %s %s && %s", appConf.NewHAProxyConfPath, appConf.MasterConf, appConf.MasterRestartScript)
 		cmdToRun := exec.Command(cmd)
@@ -295,7 +293,7 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 			success = "false"
 			msg = fmt.Sprintf("应用失败！%s", err.Error())
 		}
-	}else {
+	} else {
 		err := sshoperation.ScpHaproxyConf(appConf)
 		if err != nil {
 			success = "false"
@@ -317,12 +315,12 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
 	os.Mkdir("../log/", 0666)
-	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE | os.O_RDWR | os.O_APPEND, 0666)
+	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	logger = log.New(logFile, "\r\n", log.Ldate | log.Ltime | log.Lshortfile)
+	logger = log.New(logFile, "\r\n", log.Ldate|log.Ltime|log.Lshortfile)
 	return
 }
 
