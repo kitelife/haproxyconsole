@@ -143,7 +143,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().Format("2006-01-02 15:04:05")
 	logornot, _ := strconv.Atoi(logOrNot)
-	fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
+	//fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
 	err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
 	if err != nil {
 		logger.Println(err)
@@ -185,7 +185,6 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.QueryForTaskList()
-	fmt.Printf("getListenList - rows: %v\n", rows)
 	if err != nil {
 		logger.Println(err)
 	}

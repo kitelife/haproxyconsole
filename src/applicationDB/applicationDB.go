@@ -199,7 +199,7 @@ func (f fileForStore) InsertNewTask(servers string, vportToAssign int, comment s
 			}
 		}
 	}
-	fmt.Printf("maxId: %d", maxId)
+	//fmt.Printf("maxId: %d", maxId)
 	oneRowData := DataRow{
 		Id:       maxId + 1,
 		Servers:  servers,
