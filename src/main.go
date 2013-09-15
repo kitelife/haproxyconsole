@@ -4,6 +4,7 @@ import (
 	"applicationDB"
 	"config"
 	"encoding/json"
+	"flag"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"html/template"
@@ -16,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"tools"
 )
 
 // 声明全局变量
@@ -348,27 +350,45 @@ func main() {
 	var err error
 	logger = getLogger()
 	appConf, _ = config.ParseConfig("../conf/app_conf.ini")
-	// 存储连接初始化
-	db, err = applicationDB.InitStoreConnection(appConf)
-	if err != nil {
-		logger.Fatalln(err)
-		os.Exit(1)
-	}
-	defer db.Close()
 
-	// 请求路由
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
-	http.HandleFunc("/applyvport", applyVPort)
-	http.HandleFunc("/edittask", editTask)
-	http.HandleFunc("/listenlist", getListenList)
-	http.HandleFunc("/dellistentask", delListenTask)
-	http.HandleFunc("/applyconf", applyConf)
-	http.HandleFunc("/statspage", statsPage)
-	http.HandleFunc("/", getHomePage)
+	port := flag.String("p", "9090", "port to run the web server")
+	init := flag.Bool("i", false, "init to create the haproxymapinfo table in database")
+	toolMode := flag.Bool("t", false, "run this program as a tool to export data from database to json or from json to database")
 
-	// 启动http服务
-	err = http.ListenAndServe(":9090", nil)
-	if err != nil {
-		logger.Fatalln("ListenAndServe: ", err)
+	flag.Parse()
+	if *init {
+		// 初始化创建数据表haproxymapinfo
+		err := tools.InitDataTable(appConf)
+		tools.CheckError(err)
+	} else {
+		if *toolMode {
+			// 数据转换存储方式
+			err := tools.StorageTransform(appConf)
+			tools.CheckError()
+		} else {
+			// 存储连接初始化
+			db, err = applicationDB.InitStoreConnection(appConf)
+			if err != nil {
+				logger.Fatalln(err)
+				os.Exit(1)
+			}
+			defer db.Close()
+
+			// 请求路由
+			http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
+			http.HandleFunc("/applyvport", applyVPort)
+			http.HandleFunc("/edittask", editTask)
+			http.HandleFunc("/listenlist", getListenList)
+			http.HandleFunc("/dellistentask", delListenTask)
+			http.HandleFunc("/applyconf", applyConf)
+			http.HandleFunc("/statspage", statsPage)
+			http.HandleFunc("/", getHomePage)
+
+			// 启动http服务
+			err = http.ListenAndServe(":"+*port, nil)
+			if err != nil {
+				logger.Fatalln("ListenAndServe: ", err)
+			}
+		}
 	}
 }

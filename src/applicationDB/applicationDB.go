@@ -106,7 +106,7 @@ func readJson(f fileForStore) (allData []DataRow, err error) {
 	content, err := readAll(f.F, n+bytes.MinRead)
 	f.F.Seek(0, 0)
 	err = json.Unmarshal(content, &allData)
-	if len(allData) > 2 {
+	if len(allData) > 1 {
 		quickSort(allData, 0, len(allData)-1)
 	}
 	return
