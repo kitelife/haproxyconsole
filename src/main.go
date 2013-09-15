@@ -358,13 +358,12 @@ func main() {
 	flag.Parse()
 	if *init {
 		// 初始化创建数据表haproxymapinfo
-		err := tools.InitDataTable(appConf)
-		tools.CheckError(err)
+		tools.InitDataTable(appConf)
 	} else {
 		if *toolMode {
 			// 数据转换存储方式
 			err := tools.StorageTransform(appConf)
-			tools.CheckError()
+			tools.CheckError(err)
 		} else {
 			// 存储连接初始化
 			db, err = applicationDB.InitStoreConnection(appConf)
