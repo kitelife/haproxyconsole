@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
+	//"fmt"
 	"io"
 	"os"
 )
@@ -106,7 +106,9 @@ func readJson(f fileForStore) (allData []DataRow, err error) {
 	content, err := readAll(f.F, n+bytes.MinRead)
 	f.F.Seek(0, 0)
 	err = json.Unmarshal(content, &allData)
-	quickSort(allData, 0, len(allData)-1)
+	if len(allData) > 2 {
+		quickSort(allData, 0, len(allData)-1)
+	}
 	return
 }
 

@@ -70,3 +70,13 @@
 #apply-to-master {
     margin-right: 10px;
 }
+
+.statspage-iframe {
+	margin-top: 50px;
+}
+
+.statspage-iframe iframe{
+	height: 1000px;
+	width: 100%;
+	border: none;
+}

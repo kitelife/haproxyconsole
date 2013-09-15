@@ -311,6 +311,26 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// 展示HAProxy自带的数据统计页面
+func statsPage(w http.ResponseWriter, r *http.Request) {
+
+	type StatsPageData struct {
+		StatsUrl string
+	}
+
+	target := r.FormValue("target")
+	url := appConf.MasterStatsPage
+	if target == "slave" {
+		url = appConf.SlaveStatsPage
+	}
+	t, _ := template.ParseFiles("../template/header.tmpl", "../template/statspage.tmpl")
+	spd := StatsPageData{
+		StatsUrl: url,
+	}
+	t.ExecuteTemplate(w, "statspage", spd)
+	return
+}
+
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
 	os.Mkdir("../log/", 0666)
@@ -343,6 +363,7 @@ func main() {
 	http.HandleFunc("/listenlist", getListenList)
 	http.HandleFunc("/dellistentask", delListenTask)
 	http.HandleFunc("/applyconf", applyConf)
+	http.HandleFunc("/statspage", statsPage)
 	http.HandleFunc("/", getHomePage)
 
 	// 启动http服务
