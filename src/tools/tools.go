@@ -10,31 +10,10 @@ import (
 	"os"
 )
 
-const sqlToInit = `DROP TABLE IF EXISTS haproxymapinfo;
-CREATE TABLE haproxymapinfo (
-	id int(11) NOT NULL AUTO_INCREMENT,
- 	servers varchar(1024) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
- 	vport int(10) NOT NULL,
- 	comment varchar(1024) DEFAULT '',
- 	logornot int(1) DEFAULT '1',
- 	datetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
- 	PRIMARY KEY (id)
- ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-`
-
 func CheckError(err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-}
-
-func InitDataTable(appConf config.ConfigInfo) {
-	db, err := sql.Open(appConf.DBDriverName, appConf.DBDataSourceName)
-	defer db.Close()
-	CheckError(err)
-	_, err = db.Exec(sqlToInit)
-	CheckError(err)
-	return
 }
 
 func StorageTransform(appConf config.ConfigInfo) (err error) {
@@ -53,6 +32,7 @@ func StorageTransform(appConf config.ConfigInfo) (err error) {
 	CheckError(err)
 
 	if appConf.StoreScheme == 0 {
+		fmt.Println("**从数据库读取数据存入JSON文件中**")
 		rows, err := db.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
 		CheckError(err)
 		var id int
@@ -66,6 +46,7 @@ func StorageTransform(appConf config.ConfigInfo) (err error) {
 			err = rows.Scan(&id, &servers, &vport, &comment, &logornot, &datetime)
 			taskList = append(taskList, DataRow{Id: id, Servers: servers, VPort: vport, Comment: comment, LogOrNot: logornot, DateTime: datetime})
 		}
+		fmt.Printf("共%d条数据\n", len(taskList))
 		dataJson, err := json.MarshalIndent(taskList, "", "    ")
 		CheckError(err)
 		f, err := os.OpenFile(appConf.FileToReplaceDB, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
@@ -76,18 +57,23 @@ func StorageTransform(appConf config.ConfigInfo) (err error) {
 		return nil
 	}
 	if appConf.StoreScheme == 1 {
+		fmt.Println("**从JSON文件读取数据插入数据库中**")
 		bytes, err := ioutil.ReadFile(appConf.FileToReplaceDB)
 		allData := make([]DataRow, 0, 100)
 		err = json.Unmarshal(bytes, &allData)
 		CheckError(err)
 		// 这里还得先测试数据表haproxy是否存在，若不存在，则需创建
-		_, err = db.Exec(sqlToInit)
-		CheckError(err)
-		result, err := db.Exec("INSERT INTO haproxymapinfo (id, servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?, ?)", allData)
-		CheckError(err)
-		num, err := result.RowsAffected()
-		CheckError(err)
-		fmt.Println(num)
+		fmt.Printf("将插入%d条数据\n", len(allData))
+		var num int64
+		num = 0
+		for _, data := range allData {
+			result, err := db.Exec("INSERT INTO haproxymapinfo (id, servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?, ?)", data.Id, data.Servers, data.VPort, data.Comment, data.LogOrNot, data.DateTime)
+			CheckError(err)
+			n, err := result.RowsAffected()
+			CheckError(err)
+			num += n
+		}
+		fmt.Printf("共插入数据%d条\n", num)
 		return nil
 	}
 
