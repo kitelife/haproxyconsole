@@ -74,7 +74,7 @@ func rebuildHAProxyConf() {
 	}
 
 	taskNum := len(dataList)
-	for index := 1; index < taskNum; index++ {
+	for index := 0; index < taskNum; index++ {
 		task := dataList[index]
 		serverList := strings.Split(task.Servers, "-")
 		backendServerInfoList := make([]string, 0, 10)
@@ -285,10 +285,13 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 	target := r.FormValue("target")
 	rebuildHAProxyConf()
 	if target == "master" {
-		// 重启haproxy
-		cmd := fmt.Sprintf("cp %s %s && %s", appConf.NewHAProxyConfPath, appConf.MasterConf, appConf.MasterRestartScript)
+		bytes, err := ioutil.ReadFile(appConf.NewHAProxyConfPath)
+		masterConf, err := os.OpenFile(appConf.MasterConf, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+		defer masterConf.Close()
+		masterConf.Write(bytes)
+		cmd := appConf.MasterRestartScript
 		cmdToRun := exec.Command(cmd)
-		err := cmdToRun.Run()
+		err = cmdToRun.Run()
 		if err != nil {
 			logger.Println(err)
 			success = "false"
