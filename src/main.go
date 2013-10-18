@@ -115,6 +115,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	rowNum := len(rows)
 	/*
 		虚拟ip端口分配算法
+		可分配端口范围：10000 - 39999
 	*/
 	// 端口占用标志位数组
 	var vportToAssign int
@@ -122,8 +123,8 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	if rowNum == 0 {
 		vportToAssign = 10000
 	} else {
-		var portSlots [10000]bool
-		for index := 0; index < 10000; index++ {
+		var portSlots [30000]bool
+		for index := 0; index < 30000; index++ {
 			portSlots[index] = false
 		}
 		for index := 0; index < rowNum; index++ {
