@@ -19,8 +19,8 @@
                                 </label>
                             </div>
                         </div>
-                        {{with .Mode}}
-                        <div class="control-group">
+                        {{if .Mode}}
+                        <div class="control-group" id="business-block">
                             <label class="control-label" for="business-type">业务类型</label>
                             <div class="controls">
                                 <select id="business-type">

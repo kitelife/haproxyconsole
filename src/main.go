@@ -57,6 +57,7 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	dataToRender := DataToRender{Mode: mode, BusinessTypeList: businessTypeList}
 	t.ExecuteTemplate(w, "index", dataToRender)
 	return
@@ -193,7 +194,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	allowedSmallest := 1000
 	mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
 	fmt.Println(mayAssignedPortRange)
-	portSlots := make([]bool,mayAssignedPortRange)
+	portSlots := make([]bool, mayAssignedPortRange)
 	/*
 	* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
 	* 并且所有bool类型元素都自动初始化为false，所以下面的几行初始化代码不再需要。

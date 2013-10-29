@@ -275,8 +275,10 @@ $(function () {
         var assignMethod = $("input[name='amOptionsRadios']:checked").val();
         if (assignMethod === "0") {
             $("#to-specify-port").show();
+            $("#business-block").hide();
         } else {
             $("#to-specify-port").hide();
+            $("#business-block").show();
         }
     });
 });
