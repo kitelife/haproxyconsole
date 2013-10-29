@@ -3,6 +3,7 @@ package config
 import "github.com/robfig/config"
 
 type ConfigInfo struct {
+	BusinessList		string
 	MasterConf          string
 	MasterRestartScript string
 	SlaveServer         string
@@ -23,6 +24,7 @@ type ConfigInfo struct {
 func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	conf, err := config.ReadDefault(configPath)
 
+	businessList, _ := conf.String("mode", "BusinessList")
 	masterConf, _ := conf.String("master", "MasterConf")
 	masterRestartScript, _ := conf.String("master", "MasterRestartScript")
 
@@ -48,6 +50,7 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	newHAProxyConfPath, _ := conf.String("others", "NewHAProxyConfPath")
 
 	ci = ConfigInfo{
+		BusinessList: 		 businessList,
 		MasterConf:          masterConf,
 		MasterRestartScript: masterRestartScript,
 		SlaveServer:         slaveServer,

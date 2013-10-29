@@ -2,13 +2,45 @@
     <div class="span6 offset3">
             <div class="ui-box">
                 <div class="ui-box-header">
-                    <h4>填写ip:port列表(一行一个)</h4>
+                    <h4>新增TCP负载均衡任务</h4>
                 </div>
                 <div class="ui-box-container">
                     <form class="form-horizontal">
                         <div class="control-group">
+                            <label class="control-label" for="assign-method">分配方式：</label>
+                            <div class="controls" id="assign-method">
+                                <label class="radio">
+                                  <input type="radio" name="amOptionsRadios" id="amOptionsRadios1" value=1 checked>
+                                  自动分配端口
+                                </label>
+                                <label class="radio">
+                                  <input type="radio" name="amOptionsRadios" id="amOptionsRadios0" value=0>
+                                  指定端口
+                                </label>
+                            </div>
+                        </div>
+                        {{with .Mode}}
+                        <div class="control-group">
+                            <label class="control-label" for="business-type">业务类型</label>
+                            <div class="controls">
+                                <select id="business-type">
+                                    {{range .BusinessTypeList}}
+                                        <option value={{.Index}}>{{.BusinessName}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                        </div>
+                        {{end}}
+                        <div class="control-group" id="to-specify-port">
+                            <label class="control-label" for="specPort">端口：</label>
+                            <div class="controls">
+                                <input type="number" name="port" id="specPort" class="input-medium" placeholder="大于等于1000的整数" min="1000"/>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="controls-server-list">ip:port列表(一行一个)：</label>
                             <div class="controls" id="controls-server-list">
-                                <textarea class="input-xxlarge" id="server-list" rows="10"></textarea>
+                                <textarea class="input-xlarge" id="server-list" rows="10"></textarea>
                             </div>
                         </div>
                         <div class="control-group">
@@ -21,10 +53,10 @@
                             <label class="control-label" for="logornot">开启日志：</label>
                                 <div class="controls">
                                     <label class="radio">
-                                        <input type="radio" name="optionRadios" id="yeslog" value="1" checked />是
+                                        <input type="radio" name="lonOptionRadios" id="yeslog" value="1" checked />是
                                     </label>
                                     <label class="radio">
-                                        <input type="radio" name="optionRadios" id="nolog" value="0" />否
+                                        <input type="radio" name="lonOptionRadios" id="nolog" value="0" />否
                                     </label>
                                 </div>
                         </div>

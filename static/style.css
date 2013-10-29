@@ -21,12 +21,12 @@
     padding: 8px 10px;
     line-height: 1.6;
 }
-
+/*
 .form-horizontal #controls-server-list {
     margin-left: 0px;
     text-align: center;
 }
-
+*/
 #button-group {
     float: right;
 }
@@ -79,4 +79,8 @@
 	height: 1000px;
 	width: 100%;
 	border: none;
+}
+
+#to-specify-port {
+    display: none;
 }

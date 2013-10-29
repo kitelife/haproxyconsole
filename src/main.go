@@ -33,12 +33,33 @@ type statusResult struct {
 
 // 主页请求处理函数
 func getHomePage(w http.ResponseWriter, r *http.Request) {
+	type BusinessType struct {
+		Index        int
+		BusinessName string
+	}
+	type DataToRender struct {
+		// Mode为0表示不分业务，为1表示分业务
+		Mode             int
+		BusinessTypeList []BusinessType
+	}
+	mode := 0
+	businessTypeList := make([]BusinessType,0, 10)
+	//fmt.Printf("%T\n", appConf.BusinessList)
+	if appConf.BusinessList != "" {
+		mode = 1
+		businesses := strings.Split(appConf.BusinessList, ";")
+		for index, item := range businesses {
+			businessTypeList = append(businessTypeList, BusinessType{Index: index, BusinessName: strings.Split(item, ",")[0]})
+		}
+	}
+	//fmt.Println(mode)
 	t, err := template.ParseFiles("../template/header.tmpl", "../template/index.tmpl", "../template/footer.tmpl")
 	if err != nil {
 		fmt.Println(err)
-	} else {
-		t.ExecuteTemplate(w, "index", nil)
 	}
+	dataToRender := DataToRender{Mode: mode, BusinessTypeList: businessTypeList}
+	t.ExecuteTemplate(w, "index", dataToRender)
+	return
 }
 
 // 根据数据库数据重新生成HAProxy配置文件
@@ -52,7 +73,7 @@ func rebuildHAProxyConf() {
 		ListenCommon []string
 	}
 
-	newConfigParts := make([]string, 0, 50)
+	newConfigParts := make([]string,0, 50)
 
 	bytes, err := ioutil.ReadFile("../conf/haproxy_conf_common.json")
 	//fmt.Println(string(bytes))
@@ -77,7 +98,7 @@ func rebuildHAProxyConf() {
 	for index := 0; index < taskNum; index++ {
 		task := dataList[index]
 		serverList := strings.Split(task.Servers, "-")
-		backendServerInfoList := make([]string, 0, 10)
+		backendServerInfoList := make([]string,0, 10)
 		serverNum := len(serverList)
 		for i := 0; i < serverNum; i++ {
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
@@ -92,7 +113,7 @@ func rebuildHAProxyConf() {
 
 	newConfig := strings.Join(newConfigParts, "\n\n")
 	// 必须使用os.O_TRUNC来清空文件
-	haproxyConfFile, err := os.OpenFile(appConf.NewHAProxyConfPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+	haproxyConfFile, err := os.OpenFile(appConf.NewHAProxyConfPath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -101,9 +122,55 @@ func rebuildHAProxyConf() {
 	return
 }
 
+// 自动分配端口算法
+func autoAssignPort(firstPort int, lastPort int, assignedBiggest int, portSlots []bool) (vportToAssign int, noAvailablePort bool) {
+
+	vportToAssign = -1
+	noAvailablePort = false
+	if assignedBiggest < firstPort {
+		vportToAssign = firstPort
+	} else {
+		upperLimit := lastPort
+		if assignedBiggest < lastPort {
+			upperLimit = assignedBiggest
+		}
+		/*
+		限定不指定业务的自动端口分配只能分配firstPort-lastPort区间的端口号
+		*/
+		for begin := firstPort; begin < upperLimit; begin++ {
+			if portSlots[begin - 1000] == false {
+				vportToAssign = begin
+				break
+			}
+		}
+		if vportToAssign == -1 {
+			/*
+			若未分配到端口，原因有二：
+			1.firstPort-lastPort所有端口都已分配完
+			2.可分配的端口大于已分配的最大端口号
+			*/
+			if upperLimit == lastPort {
+				noAvailablePort = true
+			}else {
+				vportToAssign = assignedBiggest + 1
+			}
+		}
+	}
+	return
+}
+
 // 申请虚拟ip端口请求处理函数
 func applyVPort(w http.ResponseWriter, r *http.Request) {
 
+	autoOrNot, _ := strconv.Atoi(r.FormValue("autoornot"))
+	business := -1
+	var port int
+	if autoOrNot == 1 && appConf.BusinessList != "" {
+		business, _ = strconv.Atoi(r.FormValue("business"))
+	}
+	if autoOrNot == 0 {
+		port, _ = strconv.Atoi(r.FormValue("port"))
+	}
 	servers := r.FormValue("servers")
 	comment := r.FormValue("comment")
 	logOrNot := r.FormValue("logornot")
@@ -113,52 +180,103 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		logger.Println(err)
 	}
 	rowNum := len(rows)
-	/*
-		虚拟ip端口分配算法
-		可分配端口范围：10000 - 39999
-	*/
-	// 端口占用标志位数组
-	var vportToAssign int
 
-	if rowNum == 0 {
-		vportToAssign = 10000
-	} else {
-		var portSlots [30000]bool
-		for index := 0; index < 30000; index++ {
-			portSlots[index] = false
-		}
-		for index := 0; index < rowNum; index++ {
-			port := rows[index]
-			portSlots[port-10000] = true
-		}
-		maxiumVPort := rows[rowNum-1]
-		vportToAssign = maxiumVPort + 1
-		if (rowNum + 9999) < maxiumVPort {
-			boundary := maxiumVPort - 9999
-			for index := 0; index < boundary; index++ {
-				if portSlots[index] == false {
-					vportToAssign = index + 10000
+	vportToAssign := -1
+
+	dupOrNot := 0
+	noAvailablePort := false
+
+	/*
+	将1000到已分配的最大端口号之间所有未占用和已占用的端口映射到一个真假值数组
+	*/
+	assignedBiggest := rows[rowNum - 1]
+	allowedSmallest := 1000
+	mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
+	fmt.Println(mayAssignedPortRange)
+	portSlots := make([]bool,mayAssignedPortRange)
+	/*
+	* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
+	* 并且所有bool类型元素都自动初始化为false，所以下面的几行初始化代码不再需要。
+	*/
+	/*
+	fmt.Println(portSlots[0])
+	fmt.Println(portSlots[1])
+	fmt.Println(portSlots[mayAssignedPortRange-1])
+	for index := 0; index < mayAssignedPortRange; index++ {
+		portSlots[index] = false
+	}
+	*/
+	for index := 0; index < rowNum; index++ {
+		port := rows[index]
+		portSlots[port - 1000] = true
+	}
+
+	// 自动分配端口
+	if autoOrNot == 1 {
+		// 未指定业务
+		if business == -1 {
+			/*
+				虚拟ip端口自动分配算法(不指定业务)
+				可分配端口范围：10000 - 19999
+			*/
+			vportToAssign, noAvailablePort = autoAssignPort(10000, 19999, assignedBiggest, portSlots)
+		}else {
+			// 指定业务
+			var portRange string
+			businesses := strings.Split(appConf.BusinessList, ";")
+			for index, bToPortRange := range businesses {
+				if index == business {
+					portRange = strings.Split(bToPortRange, ",")[1]
 					break
 				}
 			}
+			firstAndLast := strings.Split(portRange, "-")
+			firstPort, _ := strconv.Atoi(firstAndLast[0])
+			lastPort, _ := strconv.Atoi(firstAndLast[1])
+			vportToAssign, noAvailablePort = autoAssignPort(firstPort, lastPort, assignedBiggest, portSlots)
+		}
+	}else {
+		// 指定端口
+		// 检测端口是否已被占用
+		for _, vport := range rows {
+			if port == vport {
+				dupOrNot = 1
+				break
+			}
+		}
+		if dupOrNot == 0 {
+			vportToAssign = port
 		}
 	}
 
-	now := time.Now().Format("2006-01-02 15:04:05")
-	logornot, _ := strconv.Atoi(logOrNot)
-	//fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
-	err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
-	if err != nil {
-		logger.Println(err)
-	}
-	messageParts := make([]string, 0, 2)
-	messageParts = append(messageParts, appConf.Vip)
-	messageParts = append(messageParts, strconv.Itoa(vportToAssign))
-	message := strings.Join(messageParts, ":")
+	var result statusResult
+	if dupOrNot == 0 && noAvailablePort == false {
+		now := time.Now().Format("2006-01-02 15:04:05")
+		logornot, _ := strconv.Atoi(logOrNot)
+		//fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
+		err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
+		if err != nil {
+			logger.Println(err)
+		}
+		messageParts := make([]string,0, 2)
+		messageParts = append(messageParts, appConf.Vip)
+		messageParts = append(messageParts, strconv.Itoa(vportToAssign))
+		message := strings.Join(messageParts, ":")
 
-	result := statusResult{
-		Success: "true",
-		Msg:     message,
+		result = statusResult{
+			Success: "true",
+			Msg:     message,
+		}
+	}else if (dupOrNot != 0) {
+		result = statusResult{
+			Success: "false",
+			Msg: "端口已被占用，请选择指定其他端口！",
+		}
+	}else {
+		result = statusResult{
+			Success: "false",
+			Msg: "该业务已没有可用的端口！",
+		}
 	}
 	rt, err := json.Marshal(result)
 	if err != nil {
@@ -192,7 +310,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 		logger.Println(err)
 	}
 
-	var listenTasks = make([]listenTaskInfo, 0, 100)
+	var listenTasks = make([]listenTaskInfo,0, 100)
 	seq := 1
 	rowNum := len(rows)
 	for index := 0; index < rowNum; index++ {
@@ -287,7 +405,7 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 	rebuildHAProxyConf()
 	if target == "master" {
 		bytes, err := ioutil.ReadFile(appConf.NewHAProxyConfPath)
-		masterConf, err := os.OpenFile(appConf.MasterConf, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+		masterConf, err := os.OpenFile(appConf.MasterConf, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0666)
 		defer masterConf.Close()
 		masterConf.Write(bytes)
 		cmd := appConf.MasterRestartScript
@@ -340,12 +458,12 @@ func statsPage(w http.ResponseWriter, r *http.Request) {
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
 	os.Mkdir("../log/", 0666)
-	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE | os.O_RDWR | os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	logger = log.New(logFile, "\r\n", log.Ldate|log.Ltime|log.Lshortfile)
+	logger = log.New(logFile, "\r\n", log.Ldate | log.Ltime | log.Lshortfile)
 	return
 }
 
@@ -384,7 +502,7 @@ func main() {
 		http.HandleFunc("/", getHomePage)
 
 		// 启动http服务
-		err = http.ListenAndServe(":"+*port, nil)
+		err = http.ListenAndServe(":" + *port, nil)
 		if err != nil {
 			logger.Fatalln("ListenAndServe: ", err)
 		}

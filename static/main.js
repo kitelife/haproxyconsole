@@ -2,7 +2,7 @@ $(function () {
 
     // 如果是IE浏览器，则不允许使用
     var ieVersions = new Array("6.0", "7.0", "8.0");
-    if($.browser.msie && $.inArray($.browser.version, ieVersions)){
+    if ($.browser.msie && $.inArray($.browser.version, ieVersions)) {
         alertify.set({ labels: {
             "ok": "知道了"
         } });
@@ -90,12 +90,35 @@ $(function () {
 
         var servers = $('#serversToSubmit').val(),
             comment = $.trim($('#comment').val()),
-            logOrNot = $("input[name='optionRadios']:checked").val();
+            logOrNot = $("input[name='lonOptionRadios']:checked").val(),
+            assignMethod = $("input[name='amOptionsRadios']:checked").val();
+        var specPort = "-1";
+        var businessType = "-1";
+        // 如果是指定端口方式
+        if (assignMethod === "0") {
+            specPort = $("input[name='port']").val();
+            if (specPort === "") {
+                alertify.log('请指定端口!', 'error', 3000);
+                return false;
+            }
+        }
+        // 如果是自动分配端口方式
+        if (assignMethod === "1") {
+            // 可能有业务区分，尝试获取业务类型
+            businessType = $("#business-type > option:selected").val();
+            if (businessType === undefined) {
+                businessType = "";
+            }
+        }
+
         if (thisId === 'submit') {
             var req = $.ajax({
                 'type': 'post',
                 'url': '/applyvport',
                 'data': {
+                    autoornot: assignMethod,
+                    business: businessType,
+                    port: specPort,
                     servers: servers,
                     comment: comment,
                     logornot: logOrNot
@@ -109,7 +132,7 @@ $(function () {
                 if (resp.Success == 'true') {
                     $('#server-list').val('');
                     $('#comment').val('');
-                    $('input[name="optionRadios"][value="1"]').attr('checked', true);
+                    $('input[name="lonOptionRadios"][value="1"]').attr('checked', true);
                     resultClass = 'alert alert-success';
                 }
                 // 显示结果
@@ -151,28 +174,6 @@ $(function () {
         }
     });
 
-    /*
-     if ($.browser.msie) {
-     $('.date-time').on("click", function (e) {
-     var dateTime = $(this).text();
-     $(this).html($("<div></div>", {
-     "class": "date-time-inner",
-     "text": dateTime
-     }));
-     $('.date-time-inner').popover({
-     html: true,
-     placement: 'right',
-     trigger: 'manual',
-     content: '<div id="popover-buttons"><input type="button" class="btn btn-danger" id="del-this-task" value="删除" /> <input type="button" class="btn btn-warning" id="edit-this-task" value="编辑" /></div>'
-     }).click(function (e) {
-     $('.popover').remove();
-     $(this).popover('toggle');
-     e.preventDefault();
-     e.stopPropagation();
-     });
-     });
-     } else {
-     */
     $('.date-time').popover({
         html: true,
         placement: 'right',
@@ -244,7 +245,7 @@ $(function () {
 
         $("#server-list").val(servers);
         $("#comment").val(comment);
-        $("input[name='optionRadios'][value='" + logOrNot + "']").attr("checked", true);
+        $("input[name='lonOptionRadios'][value='" + logOrNot + "']").attr("checked", true);
 
         $("#listenlist-div").slideUp();
         $("#edit-div").slideDown();
@@ -268,5 +269,14 @@ $(function () {
                 alertify.log(resp.Msg, 'error', 5000);
             }
         });
+    });
+
+    $("input[name='amOptionsRadios']").on("change", function (e) {
+        var assignMethod = $("input[name='amOptionsRadios']:checked").val();
+        if (assignMethod === "0") {
+            $("#to-specify-port").show();
+        } else {
+            $("#to-specify-port").hide();
+        }
     });
 });
