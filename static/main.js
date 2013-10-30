@@ -1,12 +1,12 @@
 $(function () {
 
     // 如果是IE浏览器，则不允许使用
-    var ieVersions = new Array("6.0", "7.0", "8.0");
-    if ($.browser.msie && $.inArray($.browser.version, ieVersions)) {
+    //var ieVersions = new Array("6.0", "7.0", "8.0");
+    if ($.browser.msie) { //&& $.inArray($.browser.version, ieVersions)) {
         alertify.set({ labels: {
             "ok": "知道了"
         } });
-        alertify.alert("请使用Google Chrome或Mozilla Firefox浏览器！暂不支持IE（6、7、8）。");
+        alertify.alert("请使用Google Chrome或Mozilla Firefox浏览器！暂不支持IE。");
         return false;
     }
 
@@ -20,6 +20,7 @@ $(function () {
         }));
     }
 
+    // 预览/预览修改
     $('#preview, #edit-preview').on('click', function (e) {
         e.preventDefault();
         var thisId = $(this).attr('id');
@@ -57,9 +58,12 @@ $(function () {
             if (thisId === 'preview') {
                 $('#preview').hide();
                 $('#submit').show();
+                $('#step-back').show();
             } else {
                 $('#edit-preview').hide();
+                $('#edit-cancel').hide();
                 $('#edit-submit').show();
+                $('#edit-step-back').show();
             }
 
             var tbody = $('<tbody></tbody>');
@@ -71,11 +75,11 @@ $(function () {
                 tbody.append(tr);
                 serverArray.push(ipPort.join(':'));
             }
-            $('tbody').remove();
-            $('table').append(tbody);
+            $('#preview-table > table > tbody').remove();
+            $('#preview-table > table').append(tbody);
 
             $('#serversToSubmit').remove();
-            $('table').after($('<input />', {
+            $('#preview-table > table').after($('<input />', {
                 'type': 'hidden',
                 'id': 'serversToSubmit',
                 'value': serverArray.join('-')
@@ -84,6 +88,25 @@ $(function () {
         }
     });
 
+    // 回退/修改回退 到预览功能
+    $('#step-back, #edit-step-back').on('click', function(e){
+        e.preventDefault();
+        var thisId = $(this).attr("id");
+
+        $('#preview-table').slideUp();
+        if(thisId === 'step-back'){
+            $('#submit').hide();
+            $('#step-back').hide();
+            $('#preview').show();
+        }else{
+            $('#edit-submit').hide();
+            $('#edit-step-back').hide();
+            $('#edit-preview').show();
+            $('#edit-cancel').show();
+        }
+    });
+
+    // 提交/修改提交
     $('#submit, #edit-submit').on('click', function (e) {
         e.preventDefault();
         var thisId = $(this).attr("id");
@@ -174,6 +197,7 @@ $(function () {
         }
     });
 
+    // 点击触发编辑/删除功能
     $('.date-time').popover({
         html: true,
         placement: 'right',
@@ -187,6 +211,7 @@ $(function () {
         });
     //}
 
+    // 删除任务
     $(document).on('click', '#del-this-task', function (e) {
         var idTd = $('.popover').siblings('.id'),
             id = $.trim(idTd.text());
@@ -226,6 +251,7 @@ $(function () {
         });
     });
 
+    // 编辑（修改）任务
     $(document).on("click", "#edit-this-task", function (e) {
         e.preventDefault();
 
@@ -251,6 +277,14 @@ $(function () {
         $("#edit-div").slideDown();
     });
 
+    // 取消编辑
+    $('#edit-cancel').on('click', function(e){
+        e.preventDefault();
+        $("#edit-div").slideUp();
+        $("#listenlist-div").slideDown();
+    });
+
+    // 生成最新配置应用到主haproxy或从haproxy
     $("#apply-to-master, #apply-to-slave").on("click", function (e) {
         if ($(this).attr("id") === 'apply-to-master') {
             var target = "master";
@@ -271,6 +305,7 @@ $(function () {
         });
     });
 
+    // 选择自动分配端口或指定端口
     $("input[name='amOptionsRadios']").on("change", function (e) {
         var assignMethod = $("input[name='amOptionsRadios']:checked").val();
         if (assignMethod === "0") {

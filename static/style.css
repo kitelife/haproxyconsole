@@ -21,6 +21,7 @@
     padding: 8px 10px;
     line-height: 1.6;
 }
+
 /*
 .form-horizontal #controls-server-list {
     margin-left: 0px;
@@ -29,7 +30,7 @@
 */
 #button-group {
     float: right;
-    margin-right: 60px;
+    margin-right: 80px;
 }
 
 #preview-table {
@@ -37,13 +38,15 @@
     margin-top: 10px;
 }
 
-#submit, #edit-submit {
+#submit, #edit-submit, #step-back, #edit-step-back {
     display: none;
 }
 
+/*
 #submit, #preview {
     margin-right: 20px;
 }
+*/
 
 #result {
     margin-top: 10px;
@@ -73,13 +76,13 @@
 }
 
 .statspage-iframe {
-	margin-top: 50px;
+    margin-top: 50px;
 }
 
-.statspage-iframe iframe{
-	height: 1000px;
-	width: 100%;
-	border: none;
+.statspage-iframe iframe {
+    height: 1000px;
+    width: 100%;
+    border: none;
 }
 
 #to-specify-port {

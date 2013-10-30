@@ -21,7 +21,7 @@
                         </div>
                         {{if .Mode}}
                         <div class="control-group" id="business-block">
-                            <label class="control-label" for="business-type">业务类型</label>
+                            <label class="control-label" for="business-type">业务类型：</label>
                             <div class="controls">
                                 <select id="business-type">
                                     {{range .BusinessTypeList}}
@@ -64,6 +64,7 @@
                             <div class="controls" id="button-group">
                                 <button class="btn btn-info" id="preview"><i class="icon-eye-open"></i> 预览</button>
                                 <button class="btn btn-primary" id="submit"><i class="icon-ok-sign"></i> 提交</button>
+                                <button class="btn" id="step-back"><i class="icon-step-backward"></i> 回退 </button>
                             </div>
                         </div>
                     </form>
