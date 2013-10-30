@@ -28,7 +28,7 @@ type ConfigInfo struct {
 // 检查业务列表配置项是否正确
 func checkBusinessList(bl string) (err error) {
 	// 允许使用1000-100000范围内的端口
-	matched, _ := regexp.MatchString(`^(.+,\d{4,6}-\d{4,6};)*(.+,\d{4,6}-\d{4,6})?$`, bl)
+	matched, _ := regexp.MatchString(`^((.+,\d{4,6}-\d{4,6};)*(.+,\d{4,6}-\d{4,6}))?$`, bl)
 	if matched == false {
 		err = errors.New("启动失败：业务端口区间列表BusinessList配置的值有误！请检查！")
 	}
