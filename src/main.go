@@ -472,7 +472,11 @@ func main() {
 
 	var err error
 	logger = getLogger()
-	appConf, _ = config.ParseConfig("../conf/app_conf.ini")
+	appConf, err = config.ParseConfig("../conf/app_conf.ini")
+	if err != nil{
+		fmt.Println(err)
+		return
+	}
 
 	port := flag.String("p", "9090", "port to run the web server")
 	toolMode := flag.Bool("t", false, "run this program as a tool to export data from database to json or from json to database")

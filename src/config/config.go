@@ -1,6 +1,10 @@
 package config
 
-import "github.com/robfig/config"
+import (
+	"errors"
+	"regexp"
+	"github.com/robfig/config"
+)
 
 type ConfigInfo struct {
 	BusinessList		string
@@ -21,9 +25,30 @@ type ConfigInfo struct {
 	NewHAProxyConfPath  string
 }
 
+// 检查业务列表配置项是否正确
+func checkBusinessList(bl string) (err error) {
+	// 允许使用1000-100000范围内的端口
+	matched, _ := regexp.MatchString(`^(.+,\d{4,6}-\d{4,6};)*(.+,\d{4,6}-\d{4,6})?$`, bl)
+	if matched == false {
+		err = errors.New("启动失败：业务端口区间列表BusinessList配置的值有误！请检查！")
+	}
+	return
+}
+
+// 检查配置文件中配置项的正确性
+func CheckConfig(conf ConfigInfo) (err error) {
+	err = checkBusinessList(conf.BusinessList)
+	if err != nil {
+		return
+	}
+	return
+}
+
 func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	conf, err := config.ReadDefault(configPath)
-
+	if err != nil {
+		return
+	}
 	businessList, _ := conf.String("mode", "BusinessList")
 	masterConf, _ := conf.String("master", "MasterConf")
 	masterRestartScript, _ := conf.String("master", "MasterRestartScript")
@@ -50,7 +75,7 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	newHAProxyConfPath, _ := conf.String("others", "NewHAProxyConfPath")
 
 	ci = ConfigInfo{
-		BusinessList: 		 businessList,
+		BusinessList:         businessList,
 		MasterConf:          masterConf,
 		MasterRestartScript: masterRestartScript,
 		SlaveServer:         slaveServer,
@@ -67,6 +92,6 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 		Vip:                 vip,
 		NewHAProxyConfPath:  newHAProxyConfPath,
 	}
-
+	err = CheckConfig(ci)
 	return
 }
