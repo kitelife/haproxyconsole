@@ -29,6 +29,7 @@
 */
 #button-group {
     float: right;
+    margin-right: 60px;
 }
 
 #preview-table {
