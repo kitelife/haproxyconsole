@@ -171,11 +171,12 @@ func checkStats(msp string, ssp string) (err error) {
 
 // 检查配置文件中配置项的正确性
 func CheckConfig(conf ConfigInfo) (err error) {
+/*
 	err = checkBusinessList(conf.BusinessList)
 	if err != nil {
 		return
 	}
-
+*/
 	err = checkMaster(conf.MasterConf, conf.MasterRestartScript)
 	if err != nil {
 		return
