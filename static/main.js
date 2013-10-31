@@ -111,7 +111,7 @@ $(function () {
         e.preventDefault();
         var thisId = $(this).attr("id");
 
-        var servers = $('#serversToSubmit').val(),
+        var servers = $.trim($('#serversToSubmit').val()),
             comment = $.trim($('#comment').val()),
             logOrNot = $("input[name='lonOptionRadios']:checked").val(),
             assignMethod = $("input[name='amOptionsRadios']:checked").val();
@@ -119,9 +119,13 @@ $(function () {
         var businessType = "-1";
         // 如果是指定端口方式
         if (assignMethod === "0") {
-            specPort = $("input[name='port']").val();
+            specPort = $.trim($("input[name='port']").val());
             if (specPort === "") {
                 alertify.log('请指定端口!', 'error', 3000);
+                return false;
+            }
+            if (! /^\d{4, 5}$/.test(specPort)){
+                alertify.log('指定的端口应在1000-99999之间（包含1000和99999）');
                 return false;
             }
         }

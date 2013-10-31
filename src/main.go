@@ -187,101 +187,117 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	dupOrNot := 0
 	noAvailablePort := false
 
-	/*
-	将1000到已分配的最大端口号之间所有未占用和已占用的端口映射到一个真假值数组
-	*/
-	assignedBiggest := rows[rowNum - 1]
-	allowedSmallest := 1000
-	mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
-	//fmt.Println(mayAssignedPortRange)
-	portSlots := make([]bool, mayAssignedPortRange)
-	/*
-	* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
-	* 并且所有bool类型元素都自动初始化为false，所以下面的几行初始化代码不再需要。
-	*/
-	/*
-	fmt.Println(portSlots[0])
-	fmt.Println(portSlots[1])
-	fmt.Println(portSlots[mayAssignedPortRange-1])
-	for index := 0; index < mayAssignedPortRange; index++ {
-		portSlots[index] = false
-	}
-	*/
-	for index := 0; index < rowNum; index++ {
-		port := rows[index]
-		portSlots[port - 1000] = true
+	// 若是指定端口方式，则判断指定的端口是否在1000-99999范围内
+	inPortRange := true
+	if autoOrNot == 0 && port < 1000 || port > 99999 {
+		inPortRange = false
 	}
 
-	// 自动分配端口
-	if autoOrNot == 1 {
-		// 未指定业务
-		if business == -1 {
-			/*
-				虚拟ip端口自动分配算法(不指定业务)
-				可分配端口范围：10000 - 19999
-			*/
-			vportToAssign, noAvailablePort = autoAssignPort(10000, 19999, assignedBiggest, portSlots)
-		}else {
-			// 指定业务
-			var portRange string
-			businesses := strings.Split(appConf.BusinessList, ";")
-			for index, bToPortRange := range businesses {
-				if index == business {
-					thisBToPortRange := strings.Split(bToPortRange, ",")
-					if comment != "" {
-						comment += "<br />"
+	if inPortRange == true {
+		/*
+		将1000到已分配的最大端口号之间所有未占用和已占用的端口映射到一个真假值数组
+		*/
+		assignedBiggest := rows[rowNum - 1]
+		allowedSmallest := 1000
+		mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
+		//fmt.Println(mayAssignedPortRange)
+		portSlots := make([]bool, mayAssignedPortRange)
+		/*
+		* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
+		* 并且所有bool类型元素都自动初始化为false，所以下面的几行初始化代码不再需要。
+		*/
+		/*
+		fmt.Println(portSlots[0])
+		fmt.Println(portSlots[1])
+		fmt.Println(portSlots[mayAssignedPortRange-1])
+		for index := 0; index < mayAssignedPortRange; index++ {
+			portSlots[index] = false
+		}
+		*/
+		for index := 0; index < rowNum; index++ {
+			port := rows[index]
+			portSlots[port - 1000] = true
+		}
+
+		// 自动分配端口
+		if autoOrNot == 1 {
+			// 未指定业务
+			if business == -1 {
+				/*
+					虚拟ip端口自动分配算法(不指定业务)
+					可分配端口范围：10000 - 19999
+				*/
+				vportToAssign, noAvailablePort = autoAssignPort(10000, 19999, assignedBiggest, portSlots)
+			}else {
+				// 指定业务
+				var portRange string
+				businesses := strings.Split(appConf.BusinessList, ";")
+				for index, bToPortRange := range businesses {
+					if index == business {
+						thisBToPortRange := strings.Split(bToPortRange, ",")
+						if comment != "" {
+							comment += "<br />"
+						}
+						comment += "业务：" + thisBToPortRange[0]
+						portRange = thisBToPortRange[1]
+						break
 					}
-					comment += "业务：" + thisBToPortRange[0]
-					portRange = thisBToPortRange[1]
+				}
+				firstAndLast := strings.Split(portRange, "-")
+				firstPort, _ := strconv.Atoi(firstAndLast[0])
+				lastPort, _ := strconv.Atoi(firstAndLast[1])
+				vportToAssign, noAvailablePort = autoAssignPort(firstPort, lastPort, assignedBiggest, portSlots)
+			}
+		}else {
+			// 指定端口
+			// 检测端口是否已被占用
+			for _, vport := range rows {
+				if port == vport {
+					dupOrNot = 1
 					break
 				}
 			}
-			firstAndLast := strings.Split(portRange, "-")
-			firstPort, _ := strconv.Atoi(firstAndLast[0])
-			lastPort, _ := strconv.Atoi(firstAndLast[1])
-			vportToAssign, noAvailablePort = autoAssignPort(firstPort, lastPort, assignedBiggest, portSlots)
-		}
-	}else {
-		// 指定端口
-		// 检测端口是否已被占用
-		for _, vport := range rows {
-			if port == vport {
-				dupOrNot = 1
-				break
+			if dupOrNot == 0 {
+				vportToAssign = port
 			}
-		}
-		if dupOrNot == 0 {
-			vportToAssign = port
 		}
 	}
 
 	var result statusResult
-	if dupOrNot == 0 && noAvailablePort == false {
-		now := time.Now().Format("2006-01-02 15:04:05")
-		logornot, _ := strconv.Atoi(logOrNot)
-		//fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
-		err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
-		if err != nil {
-			logger.Println(err)
-		}
-		messageParts := make([]string,0, 2)
-		messageParts = append(messageParts, appConf.Vip)
-		messageParts = append(messageParts, strconv.Itoa(vportToAssign))
-		message := strings.Join(messageParts, ":")
 
-		result = statusResult{
-			Success: "true",
-			Msg:     message,
-		}
-	}else if (dupOrNot != 0) {
+	if inPortRange == false {
 		result = statusResult{
 			Success: "false",
-			Msg: "端口已被占用，请选择指定其他端口！",
+			Msg: "指定的端口不在1000-99999的范围内！",
 		}
 	}else {
-		result = statusResult{
-			Success: "false",
-			Msg: "该业务已没有可用的端口！",
+		if dupOrNot == 0 && noAvailablePort == false {
+			now := time.Now().Format("2006-01-02 15:04:05")
+			logornot, _ := strconv.Atoi(logOrNot)
+			//fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
+			err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
+			if err != nil {
+				logger.Println(err)
+			}
+			messageParts := make([]string,0, 2)
+			messageParts = append(messageParts, appConf.Vip)
+			messageParts = append(messageParts, strconv.Itoa(vportToAssign))
+			message := strings.Join(messageParts, ":")
+
+			result = statusResult{
+				Success: "true",
+				Msg:     message,
+			}
+		}else if (dupOrNot != 0) {
+			result = statusResult{
+				Success: "false",
+				Msg: "端口已被占用，请选择指定其他端口！",
+			}
+		}else {
+			result = statusResult{
+				Success: "false",
+				Msg: "该业务已没有可用的端口！",
+			}
 		}
 	}
 	rt, err := json.Marshal(result)
