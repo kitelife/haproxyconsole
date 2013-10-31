@@ -198,8 +198,9 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		将1000到已分配的最大端口号之间所有未占用和已占用的端口映射到一个真假值数组
 		*/
 		var portSlots []bool
+		var assignedBiggest int
 		if rowNum > 0 {
-			assignedBiggest := rows[rowNum - 1]
+			assignedBiggest = rows[rowNum - 1]
 			allowedSmallest := 1000
 			mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
 			//fmt.Println(mayAssignedPortRange)
