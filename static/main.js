@@ -124,8 +124,8 @@ $(function () {
                 alertify.log('请指定端口!', 'error', 3000);
                 return false;
             }
-            if (! /^\d{4, 5}$/.test(specPort)){
-                alertify.log('指定的端口应在1000-99999之间（包含1000和99999）');
+            if (! /^\d{4,5}$/.test(specPort)){
+                alertify.log('指定的端口应在1000-99999之间（包含1000和99999）', 'error', 3000);
                 return false;
             }
         }
