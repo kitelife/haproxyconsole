@@ -197,28 +197,30 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		/*
 		将1000到已分配的最大端口号之间所有未占用和已占用的端口映射到一个真假值数组
 		*/
-		assignedBiggest := rows[rowNum - 1]
-		allowedSmallest := 1000
-		mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
-		//fmt.Println(mayAssignedPortRange)
-		portSlots := make([]bool, mayAssignedPortRange)
-		/*
-		* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
-		* 并且所有bool类型元素都自动初始化为false，所以下面的几行初始化代码不再需要。
-		*/
-		/*
-		fmt.Println(portSlots[0])
-		fmt.Println(portSlots[1])
-		fmt.Println(portSlots[mayAssignedPortRange-1])
-		for index := 0; index < mayAssignedPortRange; index++ {
-			portSlots[index] = false
+		var portSlots []bool
+		if rowNum > 0 {
+			assignedBiggest := rows[rowNum - 1]
+			allowedSmallest := 1000
+			mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
+			//fmt.Println(mayAssignedPortRange)
+			portSlots = make([]bool, mayAssignedPortRange)
+			/*
+			* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
+			* 并且所有bool类型元素都自动初始化为false，所以下面的几行初始化代码不再需要。
+			*/
+			/*
+			fmt.Println(portSlots[0])
+			fmt.Println(portSlots[1])
+			fmt.Println(portSlots[mayAssignedPortRange-1])
+			for index := 0; index < mayAssignedPortRange; index++ {
+				portSlots[index] = false
+			}
+			*/
+			for index := 0; index < rowNum; index++ {
+				port := rows[index]
+				portSlots[port - 1000] = true
+			}
 		}
-		*/
-		for index := 0; index < rowNum; index++ {
-			port := rows[index]
-			portSlots[port - 1000] = true
-		}
-
 		// 自动分配端口
 		if autoOrNot == 1 {
 			// 未指定业务
@@ -227,7 +229,11 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 					虚拟ip端口自动分配算法(不指定业务)
 					可分配端口范围：10000 - 19999
 				*/
-				vportToAssign, noAvailablePort = autoAssignPort(10000, 19999, assignedBiggest, portSlots)
+				if rowNum == 0 {
+					vportToAssign = 10000
+				}else {
+					vportToAssign, noAvailablePort = autoAssignPort(10000, 19999, assignedBiggest, portSlots)
+				}
 			}else {
 				// 指定业务
 				var portRange string
@@ -246,7 +252,11 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 				firstAndLast := strings.Split(portRange, "-")
 				firstPort, _ := strconv.Atoi(firstAndLast[0])
 				lastPort, _ := strconv.Atoi(firstAndLast[1])
-				vportToAssign, noAvailablePort = autoAssignPort(firstPort, lastPort, assignedBiggest, portSlots)
+				if rowNum == 0 {
+					vportToAssign = firstPort
+				}else {
+					vportToAssign, noAvailablePort = autoAssignPort(firstPort, lastPort, assignedBiggest, portSlots)
+				}
 			}
 		}else {
 			// 指定端口
