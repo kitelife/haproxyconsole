@@ -173,7 +173,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 		port, _ = strconv.Atoi(r.FormValue("port"))
 	}
 	servers := r.FormValue("servers")
-	comment := r.FormValue("comment")
+	comment := strings.TrimSpace(r.FormValue("comment"))
 	logOrNot := r.FormValue("logornot")
 
 	rows, err := db.QueryVPort()
@@ -193,7 +193,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 	assignedBiggest := rows[rowNum - 1]
 	allowedSmallest := 1000
 	mayAssignedPortRange := assignedBiggest - allowedSmallest + 1
-	fmt.Println(mayAssignedPortRange)
+	//fmt.Println(mayAssignedPortRange)
 	portSlots := make([]bool, mayAssignedPortRange)
 	/*
 	* 注意上一句make的用法-容量和长度都为mayAssignedPortRange,
@@ -227,7 +227,12 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 			businesses := strings.Split(appConf.BusinessList, ";")
 			for index, bToPortRange := range businesses {
 				if index == business {
-					portRange = strings.Split(bToPortRange, ",")[1]
+					thisBToPortRange := strings.Split(bToPortRange, ",")
+					if comment != "" {
+						comment += "<br />"
+					}
+					comment += "业务：" + thisBToPortRange[0]
+					portRange = thisBToPortRange[1]
 					break
 				}
 			}
@@ -297,7 +302,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 		Servers  template.HTML
 		Vip      string
 		Vport    int
-		Comment  string
+		Comment  template.HTML
 		LogOrNot int
 		DateTime string
 	}
@@ -322,7 +327,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 			Servers:  template.HTML(strings.Join(strings.Split(row.Servers, "-"), "<br />")),
 			Vip:      appConf.Vip,
 			Vport:    row.VPort,
-			Comment:  row.Comment,
+			Comment:  template.HTML(strings.Join(strings.Split(row.Comment, "\n"), "<br />")),
 			LogOrNot: row.LogOrNot,
 			DateTime: row.DateTime,
 		}
@@ -332,7 +337,6 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	Lld := listenListData{
 		ListenTaskList: listenTasks,
 	}
-
 	t, err := template.ParseFiles("../template/header.tmpl", "../template/listenlist.tmpl", "../template/footer.tmpl")
 	if err != nil {
 		fmt.Println(err)
@@ -473,7 +477,7 @@ func main() {
 	var err error
 	logger = getLogger()
 	appConf, err = config.ParseConfig("../conf/app_conf.ini")
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 		return
 	}
