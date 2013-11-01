@@ -65,8 +65,13 @@ func quickSort(portRangeList [][2]int, left int, right int) {
 
 // 检查业务列表配置项是否正确
 func checkBusinessList(bl string) (err error) {
+
+	if bl == "" {
+		return
+	}
+
 	// 允许使用1000-99999范围内的端口
-	matched, _ := regexp.MatchString(`^((.+,\d{4,5}-\d{4,5};)*(.+,\d{4,5}-\d{4,5}))?$`, bl)
+	matched, _ := regexp.MatchString(`^(.+,\d{4,5}-\d{4,5};)*(.+,\d{4,5}-\d{4,5})$`, bl)
 	if matched == false {
 		err = errors.New("启动失败：业务端口区间列表BusinessList配置的值有误！请检查！")
 		return
@@ -171,12 +176,12 @@ func checkStats(msp string, ssp string) (err error) {
 
 // 检查配置文件中配置项的正确性
 func CheckConfig(conf ConfigInfo) (err error) {
-/*
+
 	err = checkBusinessList(conf.BusinessList)
 	if err != nil {
 		return
 	}
-*/
+
 	err = checkMaster(conf.MasterConf, conf.MasterRestartScript)
 	if err != nil {
 		return
