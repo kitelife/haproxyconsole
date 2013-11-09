@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 )
 
 type ConfigInfo struct {
@@ -30,6 +31,7 @@ type ConfigInfo struct {
 	NewHAProxyConfPath  string
 }
 
+/*
 // 函数checkBusinessList使用
 func quickSort(portRangeList [][2]int, left int, right int) {
 	temp := portRangeList[left]
@@ -61,6 +63,21 @@ func quickSort(portRangeList [][2]int, left int, right int) {
 	if right - p > 1 {
 		quickSort(portRangeList, p + 1, right)
 	}
+}
+*/
+
+type portRanges [][2]int
+
+func (prs portRanges) Len() int {
+	return len(prs)
+}
+
+func (prs portRanges) Swap(i, j int){
+	prs[i], prs[j] = prs[j], prs[i]
+}
+
+func (prs portRanges) Less(i, j int)bool{
+	return prs[i][0] <= prs[j][0]
 }
 
 // 检查业务列表配置项是否正确
@@ -108,7 +125,8 @@ func checkBusinessList(bl string) (err error) {
 	isOverlap := false
 	// 先对业务端口范围按照范围的起始端口从小到大排序
 	rangeNum := len(portRangeList)
-	quickSort(portRangeList, 0, rangeNum - 1)
+	//quickSort(portRangeList, 0, rangeNum - 1)
+	sort.Sort(portRanges(portRangeList))
 	for index := 0; index < rangeNum - 1; index++ {
 		if portRangeList[index][1] >= portRangeList[index + 1][0] {
 			isOverlap = true

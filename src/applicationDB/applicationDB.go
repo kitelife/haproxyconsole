@@ -9,6 +9,7 @@ import (
 	//"fmt"
 	"io"
 	"os"
+	"sort"
 )
 
 type NewConfDataType struct {
@@ -43,6 +44,7 @@ type fileForStore struct {
 	F *os.File
 }
 
+/*
 // 实现数据库查询中的"ORDER BY vport ASC"
 func quickSort(values []DataRow, left int, right int) {
 	temp := values[left]
@@ -74,6 +76,20 @@ func quickSort(values []DataRow, left int, right int) {
 	if right-p > 1 {
 		quickSort(values, p+1, right)
 	}
+}
+*/
+type DataRows []DataRow
+
+func (drs DataRows) Len() int {
+	return len(drs)
+}
+
+func (drs DataRows) Swap(i, j int){
+	drs[i], drs[j] = drs[j], drs[i]
+}
+
+func (drs DataRows) Less(i, j int)bool{
+	return drs[i].VPort <= drs[j].VPort
 }
 
 // 该辅助函数来自golang标准库io/ioutil/ioutil.go
@@ -107,7 +123,8 @@ func readJson(f fileForStore) (allData []DataRow, err error) {
 	f.F.Seek(0, 0)
 	err = json.Unmarshal(content, &allData)
 	if len(allData) > 1 {
-		quickSort(allData, 0, len(allData)-1)
+		//quickSort(allData, 0, len(allData)-1)
+		sort.Sort(DataRows(allData))
 	}
 	return
 }
