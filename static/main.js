@@ -42,7 +42,7 @@ $(function () {
                 syntaxError = 1;
                 break;
             }
-            var ipPortPattern =  /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):[1-9]\d+$/
+            var ipPortPattern =  /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):[1-9]\d+$/;
             if(! ipPortPattern.test(server)){
                 syntaxError = 1;
                 break;
