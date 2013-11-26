@@ -42,13 +42,21 @@ $(function () {
                 syntaxError = 1;
                 break;
             }
+            var ipPortPattern =  /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):[1-9]\d+$/
+            if(! ipPortPattern.test(server)){
+                syntaxError = 1;
+                break;
+            }
+            
             var ipPort = server.split(':');
+            /*
             ipPort[0] = $.trim(ipPort[0]);
             ipPort[1] = $.trim(ipPort[1]);
             if (ipPort[0] === '' || ipPort[1] === '') {
                 syntaxError = 1;
                 break;
             }
+            */
             ipPortArray.push(ipPort);
         }
         if (syntaxError === 1) {

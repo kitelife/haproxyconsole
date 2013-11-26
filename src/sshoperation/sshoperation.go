@@ -59,7 +59,7 @@ func ScpHaproxyConf(appConf config.ConfigInfo)(errinfo error) {
     go func() {
         w, _ := session.StdinPipe()
         defer w.Close()
-        fmt.Fprintln(w, "C0644", len(content), "testfile")
+        fmt.Fprintln(w, "C0644", len(content), "new_conf")
         fmt.Fprint(w, content)
         fmt.Fprint(w, "\x00")
     }()
