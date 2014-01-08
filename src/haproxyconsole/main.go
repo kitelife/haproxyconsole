@@ -3,16 +3,21 @@ package main
 import (
 	"applicationDB"
 	"config"
+	"crypto/md5"
 	"encoding/json"
 	"flag"
 	"fmt"
+	auth "github.com/abbot/go-http-auth"
 	_ "github.com/go-sql-driver/mysql"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
 	"sshoperation"
 	"strconv"
 	"strings"
@@ -24,6 +29,7 @@ import (
 var logger *log.Logger
 var db applicationDB.DB
 var appConf config.ConfigInfo
+var haproxyConsoleRoot string
 
 // 状态结果结构体
 type statusResult struct {
@@ -32,8 +38,7 @@ type statusResult struct {
 }
 
 // 主页请求处理函数
-func getHomePage(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
+func getHomePage(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	type BusinessType struct {
 		Index        int
 		BusinessName string
@@ -54,7 +59,7 @@ func getHomePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	//fmt.Println(mode)
-	t, err := template.ParseFiles("../template/header.tmpl", "../template/index.tmpl", "../template/footer.tmpl")
+	t, err := template.ParseFiles(haproxyConsoleRoot+"/template/header.tmpl", haproxyConsoleRoot+"/template/index.tmpl", haproxyConsoleRoot+"/template/footer.tmpl")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -77,7 +82,7 @@ func rebuildHAProxyConf() {
 
 	newConfigParts := make([]string, 0, 50)
 
-	bytes, err := ioutil.ReadFile("../conf/haproxy_conf_common.json")
+	bytes, err := ioutil.ReadFile(haproxyConsoleRoot + "/conf/haproxy_conf_common.json")
 	//fmt.Println(string(bytes))
 	if err != nil {
 		return
@@ -162,8 +167,7 @@ func autoAssignPort(firstPort int, lastPort int, assignedBiggest int, portSlots 
 }
 
 // 申请虚拟ip端口请求处理函数
-func applyVPort(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
+func applyVPort(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	autoOrNot, _ := strconv.Atoi(r.FormValue("autoornot"))
 	business := -1
 	var port int
@@ -321,8 +325,7 @@ func applyVPort(w http.ResponseWriter, r *http.Request) {
 }
 
 // 获取haproxy listen任务列表
-func getListenList(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
+func getListenList(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// listen任务列表数据
 	type listenTaskInfo struct {
 		Seq      int
@@ -365,7 +368,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 	Lld := listenListData{
 		ListenTaskList: listenTasks,
 	}
-	t, err := template.ParseFiles("../template/header.tmpl", "../template/listenlist.tmpl", "../template/footer.tmpl")
+	t, err := template.ParseFiles(haproxyConsoleRoot+"/template/header.tmpl", haproxyConsoleRoot+"/template/listenlist.tmpl", haproxyConsoleRoot+"/template/footer.tmpl")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -374,8 +377,7 @@ func getListenList(w http.ResponseWriter, r *http.Request) {
 }
 
 // 删除任务
-func delListenTask(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
+func delListenTask(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	success := "true"
 	msg := "已成功删除"
 
@@ -398,8 +400,7 @@ func delListenTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // 编辑任务
-func editTask(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
+func editTask(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	success := "true"
 	msg := "更新成功！"
 
@@ -429,8 +430,7 @@ func editTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // 应用新HAProxy配置文件
-func applyConf(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
+func applyConf(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	success := "true"
 	msg := "成功应用！"
 
@@ -470,7 +470,6 @@ func applyConf(w http.ResponseWriter, r *http.Request) {
 
 // 展示HAProxy自带的数据统计页面
 func statsPage(w http.ResponseWriter, r *http.Request) {
-	r.SetBasicAuth(appConf.BasicAuthUser, appConf.BasicAuthPasswd)
 	type StatsPageData struct {
 		StatsUrl string
 	}
@@ -480,7 +479,7 @@ func statsPage(w http.ResponseWriter, r *http.Request) {
 	if target == "slave" {
 		url = appConf.SlaveStatsPage
 	}
-	t, _ := template.ParseFiles("../template/header.tmpl", "../template/statspage.tmpl")
+	t, _ := template.ParseFiles(haproxyConsoleRoot+"/template/header.tmpl", haproxyConsoleRoot+"/template/statspage.tmpl")
 	spd := StatsPageData{
 		StatsUrl: url,
 	}
@@ -490,8 +489,8 @@ func statsPage(w http.ResponseWriter, r *http.Request) {
 
 // 日志初始化函数
 func getLogger() (logger *log.Logger) {
-	os.Mkdir("../log/", 0666)
-	logFile, err := os.OpenFile("../log/HAProxyConsole.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	os.Mkdir(haproxyConsoleRoot+"/log/", 0666)
+	logFile, err := os.OpenFile(haproxyConsoleRoot+"/log/HAProxyConsole.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
@@ -500,20 +499,48 @@ func getLogger() (logger *log.Logger) {
 	return
 }
 
+func Secret(user, realm string) string {
+	if user == appConf.BasicAuthUser {
+		h := md5.New()
+		io.WriteString(h, appConf.BasicAuthPasswd)
+		return fmt.Sprintf("%x", h.Sum(nil))
+	}
+	return ""
+}
+
 func main() {
+
+	programName := os.Args[0]
+	absPath, _ := filepath.Abs(programName)
+	haproxyConsoleRoot = path.Dir(path.Dir(absPath))
+
+	port := flag.String("p", "9090", "port to run the web server")
+	configuration := flag.String("config", "", "path to the app config file")
+	toolMode := flag.Bool("t", false, "run this program as a tool to export data from database to json or from json to database")
+
+	flag.Parse()
+
+	configPath := *configuration
+
+	if configPath == "" {
+		defaultConfigPath := haproxyConsoleRoot + "/conf/app_conf.ini"
+		fmt.Printf("You not set the configPath, so try to use the default config path: %s\n", defaultConfigPath)
+		if _, e := os.Stat(defaultConfigPath); os.IsNotExist(e) {
+			fmt.Println("Not Exit default config file")
+			os.Exit(1)
+		} else {
+			configPath = defaultConfigPath
+		}
+	}
 
 	var err error
 	logger = getLogger()
-	appConf, err = config.ParseConfig("../conf/app_conf.ini")
+
+	appConf, err = config.ParseConfig(configPath)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	port := flag.String("p", "9090", "port to run the web server")
-	toolMode := flag.Bool("t", false, "run this program as a tool to export data from database to json or from json to database")
-
-	flag.Parse()
 
 	if *toolMode {
 		// 数据转换存储方式
@@ -529,14 +556,15 @@ func main() {
 		defer db.Close()
 
 		// 请求路由
-		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static/"))))
-		http.HandleFunc("/applyvport", applyVPort)
-		http.HandleFunc("/edittask", editTask)
-		http.HandleFunc("/listenlist", getListenList)
-		http.HandleFunc("/dellistentask", delListenTask)
-		http.HandleFunc("/applyconf", applyConf)
+		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(haproxyConsoleRoot+"/static/"))))
+		authenticator := auth.NewBasicAuthenticator("HAProxyConsole", Secret)
+		http.HandleFunc("/applyvport", authenticator.Wrap(applyVPort))
+		http.HandleFunc("/edittask", authenticator.Wrap(editTask))
+		http.HandleFunc("/listenlist", authenticator.Wrap(getListenList))
+		http.HandleFunc("/dellistentask", authenticator.Wrap(delListenTask))
+		http.HandleFunc("/applyconf", authenticator.Wrap(applyConf))
 		http.HandleFunc("/statspage", statsPage)
-		http.HandleFunc("/", getHomePage)
+		http.HandleFunc("/", authenticator.Wrap(getHomePage))
 
 		// 启动http服务
 		err = http.ListenAndServe(":"+*port, nil)
