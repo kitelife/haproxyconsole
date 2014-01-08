@@ -3,14 +3,12 @@ package main
 import (
 	"applicationDB"
 	"config"
-	"crypto/md5"
 	"encoding/json"
 	"flag"
 	"fmt"
 	auth "github.com/abbot/go-http-auth"
 	_ "github.com/go-sql-driver/mysql"
 	"html/template"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -501,9 +499,9 @@ func getLogger() (logger *log.Logger) {
 
 func Secret(user, realm string) string {
 	if user == appConf.BasicAuthUser {
-		h := md5.New()
-		io.WriteString(h, appConf.BasicAuthPasswd)
-		return fmt.Sprintf("%x", h.Sum(nil))
+		// username: admin
+		// passwd: 1qazXSW@
+		return appConf.BasicAuthPasswd
 	}
 	return ""
 }
