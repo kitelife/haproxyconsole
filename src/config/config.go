@@ -4,16 +4,16 @@ import (
 	"errors"
 	//"fmt"
 	"github.com/robfig/config"
-	"strconv"
-	"strings"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type ConfigInfo struct {
-	BusinessList		string
+	BusinessList        string
 	MasterConf          string
 	MasterRestartScript string
 	SlaveServer         string
@@ -29,6 +29,8 @@ type ConfigInfo struct {
 	SlaveStatsPage      string
 	Vip                 string
 	NewHAProxyConfPath  string
+	BasicAuthUser       string
+	BasicAuthPasswd     string
 }
 
 /*
@@ -72,11 +74,11 @@ func (prs portRanges) Len() int {
 	return len(prs)
 }
 
-func (prs portRanges) Swap(i, j int){
+func (prs portRanges) Swap(i, j int) {
 	prs[i], prs[j] = prs[j], prs[i]
 }
 
-func (prs portRanges) Less(i, j int)bool{
+func (prs portRanges) Less(i, j int) bool {
 	return prs[i][0] <= prs[j][0]
 }
 
@@ -97,19 +99,19 @@ func checkBusinessList(bl string) (err error) {
 	// 预估业务类型数目不超过15个
 	businesses := strings.Split(bl, ";")
 	nameToPortRanges := make(map[string][2]int)
-	portRangeList := make([][2]int,0, 15)
+	portRangeList := make([][2]int, 0, 15)
 	for _, business := range businesses {
 		nameToPortRange := strings.Split(business, ",")
 		portRange := strings.Split(nameToPortRange[1], "-")
 		beginPort, _ := strconv.Atoi(portRange[0])
 		endPort, _ := strconv.Atoi(portRange[1])
-		nameToPortRanges[nameToPortRange[0]] = [2]int{ beginPort, endPort}
+		nameToPortRanges[nameToPortRange[0]] = [2]int{beginPort, endPort}
 		portRangeList = append(portRangeList, [2]int{beginPort, endPort})
 	}
 
 	// 端口范围的开始值是否大于结束值
 	beginGtEnd := false
-	beginGtEndBusiness := make([]string,0, 15)
+	beginGtEndBusiness := make([]string, 0, 15)
 	for businessName, portRange := range nameToPortRanges {
 		if portRange[0] > portRange[1] || portRange[0] < 1000 || portRange[1] > 99999 {
 			beginGtEnd = true
@@ -127,8 +129,8 @@ func checkBusinessList(bl string) (err error) {
 	rangeNum := len(portRangeList)
 	//quickSort(portRangeList, 0, rangeNum - 1)
 	sort.Sort(portRanges(portRangeList))
-	for index := 0; index < rangeNum - 1; index++ {
-		if portRangeList[index][1] >= portRangeList[index + 1][0] {
+	for index := 0; index < rangeNum-1; index++ {
+		if portRangeList[index][1] >= portRangeList[index+1][0] {
 			isOverlap = true
 			break
 		}
@@ -165,14 +167,14 @@ func checkStore(conf ConfigInfo) (err error) {
 			err = errors.New("启动失败：配置文件中[store]部分的FileToReplaceDB项配置有误！")
 			return
 		}
-	}else if conf.StoreScheme == 0 { // 采用数据库存储时
+	} else if conf.StoreScheme == 0 { // 采用数据库存储时
 		// DSN(Data Source Name)的格式：[username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 		matched, _ := regexp.MatchString(`^.+:.*@(tcp(4|6)?|udp(4|6)?|ip(4|6)?|unix(gram|packet)?)\(.+\)/.+(\?.+=.+(&.+=.+)*)?$`, conf.DBDataSourceName)
 		if conf.DBDriverName != "mysql" || matched == false {
 			err = errors.New("启动失败：配置文件[store]部分的DBDriverName或DBDataSourceName配置有误！")
 			return
 		}
-	}else {    //配置项StoreScheme有误
+	} else { //配置项StoreScheme有误
 		err = errors.New("启动失败：配置文件[store]部分的StoreScheme项配置有误")
 		return
 	}
@@ -243,12 +245,15 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	masterStatsPage, _ := conf.String("stats", "MasterStatsPage")
 	slaveStatsPage, _ := conf.String("stats", "SlaveStatsPage")
 
+	basicAuthUser, _ := conf.String("auth", "BasicAuthUser")
+	basicAuthPasswd, _ := conf.String("auth", "BasicAuthPasswd")
+
 	vip, _ := conf.String("others", "Vip")
 
 	newHAProxyConfPath, _ := conf.String("others", "NewHAProxyConfPath")
 
 	ci = ConfigInfo{
-		BusinessList:         businessList,
+		BusinessList:        businessList,
 		MasterConf:          masterConf,
 		MasterRestartScript: masterRestartScript,
 		SlaveServer:         slaveServer,
@@ -264,6 +269,8 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 		SlaveStatsPage:      slaveStatsPage,
 		Vip:                 vip,
 		NewHAProxyConfPath:  newHAProxyConfPath,
+		BasicAuthUser:       basicAuthUser,
+		BasicAuthPasswd:     basicAuthPasswd,
 	}
 	err = CheckConfig(ci)
 	return
