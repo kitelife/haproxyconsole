@@ -29,8 +29,6 @@ type ConfigInfo struct {
 	SlaveStatsPage      string
 	Vip                 string
 	NewHAProxyConfPath  string
-	BasicAuthUser       string
-	BasicAuthPasswd     string
 }
 
 /*
@@ -245,9 +243,6 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	masterStatsPage, _ := conf.String("stats", "MasterStatsPage")
 	slaveStatsPage, _ := conf.String("stats", "SlaveStatsPage")
 
-	basicAuthUser, _ := conf.String("auth", "BasicAuthUser")
-	basicAuthPasswd, _ := conf.String("auth", "BasicAuthPasswd")
-
 	vip, _ := conf.String("others", "Vip")
 
 	newHAProxyConfPath, _ := conf.String("others", "NewHAProxyConfPath")
@@ -269,8 +264,6 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 		SlaveStatsPage:      slaveStatsPage,
 		Vip:                 vip,
 		NewHAProxyConfPath:  newHAProxyConfPath,
-		BasicAuthUser:       basicAuthUser,
-		BasicAuthPasswd:     basicAuthPasswd,
 	}
 	err = CheckConfig(ci)
 	return

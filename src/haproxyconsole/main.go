@@ -497,15 +497,6 @@ func getLogger() (logger *log.Logger) {
 	return
 }
 
-func Secret(user, realm string) string {
-	if user == appConf.BasicAuthUser {
-		// username: admin
-		// passwd: 1qazXSW@
-		return appConf.BasicAuthPasswd
-	}
-	return ""
-}
-
 func main() {
 
 	programName := os.Args[0]
@@ -555,7 +546,8 @@ func main() {
 
 		// 请求路由
 		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(haproxyConsoleRoot+"/static/"))))
-		authenticator := auth.NewBasicAuthenticator("HAProxyConsole", Secret)
+		// basic auth user: admin, passwd: 1qazXSW@
+		authenticator := auth.NewBasicAuthenticator("HAProxyConsole", auth.HtpasswdFileProvider(haproxyConsoleRoot+"/conf/md5passwd"))
 		http.HandleFunc("/applyvport", authenticator.Wrap(applyVPort))
 		http.HandleFunc("/edittask", authenticator.Wrap(editTask))
 		http.HandleFunc("/listenlist", authenticator.Wrap(getListenList))
