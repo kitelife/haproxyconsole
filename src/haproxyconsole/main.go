@@ -157,7 +157,7 @@ func autoAssignPort(firstPort int, lastPort int, assignedBiggest int, portSlots 
 			if upperLimit == lastPort {
 				noAvailablePort = true
 			} else {
-				vportToAssign = assignedBiggest + 1
+				vportToAssign = assignedBiggest+1
 			}
 		}
 	}
@@ -248,7 +248,7 @@ func applyVPort(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 						if comment != "" {
 							comment += "<br />"
 						}
-						comment += "业务：" + thisBToPortRange[0]
+						comment += "业务："+thisBToPortRange[0]
 						portRange = thisBToPortRange[1]
 						break
 					}
@@ -361,7 +361,7 @@ func getListenList(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 			DateTime: row.DateTime,
 		}
 		listenTasks = append(listenTasks, lti)
-		seq = seq + 1
+		seq = seq+1
 	}
 	Lld := listenListData{
 		ListenTaskList: listenTasks,
@@ -448,7 +448,13 @@ func applyConf(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 			msg = fmt.Sprintf("应用失败！%s", err.Error())
 		}
 	} else {
-		err := sshoperation.ScpHaproxyConf(appConf)
+		var err error
+		if appConf.CopyMethod == 1 {
+			err = sshoperation.ScpHaproxyConf(appConf)
+		}
+		if appConf.CopyMethod == 2 {
+			err = sshoperation.ConfidentialScpHAProxyConf(appConf)
+		}
 		if err != nil {
 			success = "false"
 			msg = fmt.Sprintf("应用失败！%s", err.Error())

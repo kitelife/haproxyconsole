@@ -13,22 +13,24 @@ import (
 )
 
 type ConfigInfo struct {
-	BusinessList        string
-	MasterConf          string
-	MasterRestartScript string
-	SlaveServer         string
-	SlaveRemoteUser     string
-	SlaveRemotePasswd   string
-	SlaveConf           string
-	SlaveRestartScript  string
-	StoreScheme         int
-	DBDriverName        string
-	DBDataSourceName    string
-	FileToReplaceDB     string
-	MasterStatsPage     string
-	SlaveStatsPage      string
-	Vip                 string
-	NewHAProxyConfPath  string
+	BusinessList          string
+	MasterConf            string
+	MasterRestartScript   string
+	CopyMethod            int
+	SlaveServer           string
+	SlaveRemoteUser       string
+	SlaveRemotePasswd     string
+	SSHCommandPath        string
+	SlaveConf             string
+	SlaveRestartScript    string
+	StoreScheme           int
+	DBDriverName          string
+	DBDataSourceName      string
+	FileToReplaceDB       string
+	MasterStatsPage       string
+	SlaveStatsPage        string
+	Vip                   string
+	NewHAProxyConfPath    string
 }
 
 /*
@@ -117,7 +119,7 @@ func checkBusinessList(bl string) (err error) {
 		}
 	}
 	if beginGtEnd {
-		err = errors.New("启动失败：" + strings.Join(beginGtEndBusiness, ",") + "的端口范围有误！")
+		err = errors.New("启动失败："+strings.Join(beginGtEndBusiness, ",")+"的端口范围有误！")
 		return
 	}
 
@@ -226,9 +228,11 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	masterConf, _ := conf.String("master", "MasterConf")
 	masterRestartScript, _ := conf.String("master", "MasterRestartScript")
 
+	copyMethod, _ := conf.Int("slave", "CopyMethod")
 	slaveServer, _ := conf.String("slave", "SlaveServer")
 	slaveRemoteUser, _ := conf.String("slave", "SlaveRemoteUser")
 	slaveRemotePasswd, _ := conf.String("slave", "SlaveRemotePasswd")
+	sshCommandPath, _ := conf.String("slave", "SSHCommandPath")
 
 	slaveConf, _ := conf.String("slave", "SlaveConf")
 	slaveRestartScript, _ := conf.String("slave", "SlaveRestartScript")
@@ -251,9 +255,11 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 		BusinessList:        businessList,
 		MasterConf:          masterConf,
 		MasterRestartScript: masterRestartScript,
+		CopyMethod:          copyMethod,
 		SlaveServer:         slaveServer,
 		SlaveRemoteUser:     slaveRemoteUser,
 		SlaveRemotePasswd:   slaveRemotePasswd,
+		SSHCommandPath: 	 sshCommandPath,
 		SlaveConf:           slaveConf,
 		SlaveRestartScript:  slaveRestartScript,
 		StoreScheme:         storeScheme,
