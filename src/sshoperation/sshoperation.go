@@ -17,7 +17,7 @@ func (p clientPassword) Password(user string) (string, error) {
 
 func ScpHaproxyConf(appConf config.ConfigInfo) (errinfo error) {
 
-	server := appConf.SlaveServer
+	server := fmt.Sprintf("%s:%d", appConf.SlaveServerIp, appConf.SlaveServerSSHPort)
 	username := appConf.SlaveRemoteUser
 	password := clientPassword(appConf.SlaveRemotePasswd)
 
@@ -65,7 +65,7 @@ func ScpHaproxyConf(appConf config.ConfigInfo) (errinfo error) {
 		fmt.Fprint(w, content)
 		fmt.Fprint(w, "\x00")
 	}()
-	cmd := fmt.Sprintf("/usr/bin/scp -tq %s && %s", appConf.SlaveConf, appConf.SlaveRestartScript)
+	cmd := fmt.Sprintf("%s -tq %s && %s", appConf.ScpCommandPath, appConf.SlaveConf, appConf.SlaveRestartScript)
 	if err := session.Run(cmd); err != nil {
 		errinfo = errors.New(fmt.Sprintf("Failed to run: %s", err.Error()))
 		return
@@ -75,14 +75,16 @@ func ScpHaproxyConf(appConf config.ConfigInfo) (errinfo error) {
 
 // 主到从已打通信任关系，故无需密码
 func ConfidentialScpHAProxyConf(appConf config.ConfigInfo) (errinfo error) {
-	scpTarget := fmt.Sprintf("%s@%s:%s", appConf.SlaveRemoteUser, appConf.SlaveServer, appConf.SlaveConf)
-	_, err := exec.Command("/usr/bin/scp", appConf.NewHAProxyConfPath, scpTarget).Output()
+	scpTarget := fmt.Sprintf("%s@%s:%s", appConf.SlaveRemoteUser, appConf.SlaveServerIp, appConf.SlaveConf)
+	scpTargetPortOption := fmt.Sprintf("-P %d", appConf.SlaveServerSSHPort)
+	_, err := exec.Command(appConf.ScpCommandPath, scpTargetPortOption, appConf.NewHAProxyConfPath, scpTarget).Output()
 	if err != nil {
 		errinfo = errors.New(fmt.Sprintf("Failed to remote copy config file : %s", err.Error()))
 		return
 	}
-	sshTarget := fmt.Sprintf("%s@%s", appConf.SlaveRemoteUser, appConf.SlaveServer)
-	_, err = exec.Command(appConf.SSHCommandPath, sshTarget, appConf.SlaveRestartScript).Output()
+	sshTarget := fmt.Sprintf("%s@%s", appConf.SlaveRemoteUser, appConf.SlaveServerIp)
+	sshTargetPortOption := fmt.Sprintf("-p %d", appConf.SlaveServerSSHPort)
+	_, err = exec.Command(appConf.SSHCommandPath, sshTargetPortOption, sshTarget, appConf.SlaveRestartScript).Output()
 	if err != nil {
 		errinfo = errors.New(fmt.Sprintf("Falied to restart haproxy : %s", err.Error()))
 		return

@@ -13,24 +13,26 @@ import (
 )
 
 type ConfigInfo struct {
-	BusinessList          string
-	MasterConf            string
-	MasterRestartScript   string
-	CopyMethod            int
-	SlaveServer           string
-	SlaveRemoteUser       string
-	SlaveRemotePasswd     string
-	SSHCommandPath        string
-	SlaveConf             string
-	SlaveRestartScript    string
-	StoreScheme           int
-	DBDriverName          string
-	DBDataSourceName      string
-	FileToReplaceDB       string
-	MasterStatsPage       string
-	SlaveStatsPage        string
-	Vip                   string
-	NewHAProxyConfPath    string
+	BusinessList              string
+	MasterConf                string
+	MasterRestartScript       string
+	CopyMethod                int
+	SlaveServerIp             string
+	SlaveServerSSHPort        int
+	SlaveRemoteUser           string
+	SlaveRemotePasswd         string
+	SSHCommandPath            string
+	ScpCommandPath            string
+	SlaveConf                 string
+	SlaveRestartScript        string
+	StoreScheme               int
+	DBDriverName              string
+	DBDataSourceName          string
+	FileToReplaceDB           string
+	MasterStatsPage           string
+	SlaveStatsPage            string
+	Vip                       string
+	NewHAProxyConfPath        string
 }
 
 /*
@@ -229,10 +231,12 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 	masterRestartScript, _ := conf.String("master", "MasterRestartScript")
 
 	copyMethod, _ := conf.Int("slave", "CopyMethod")
-	slaveServer, _ := conf.String("slave", "SlaveServer")
+	slaveServerIp, _ := conf.String("slave", "SlaveServerIp")
+	slaveServerSSHPort, _ := conf.Int("slave", "SlaveServerSSHPort")
 	slaveRemoteUser, _ := conf.String("slave", "SlaveRemoteUser")
 	slaveRemotePasswd, _ := conf.String("slave", "SlaveRemotePasswd")
 	sshCommandPath, _ := conf.String("slave", "SSHCommandPath")
+	scpCommandPath, _ := conf.String("slave", "ScpCommandPath")
 
 	slaveConf, _ := conf.String("slave", "SlaveConf")
 	slaveRestartScript, _ := conf.String("slave", "SlaveRestartScript")
@@ -256,10 +260,12 @@ func ParseConfig(configPath string) (ci ConfigInfo, err error) {
 		MasterConf:          masterConf,
 		MasterRestartScript: masterRestartScript,
 		CopyMethod:          copyMethod,
-		SlaveServer:         slaveServer,
+		SlaveServerIp:       slaveServerIp,
+		SlaveServerSSHPort:  slaveServerSSHPort,
 		SlaveRemoteUser:     slaveRemoteUser,
 		SlaveRemotePasswd:   slaveRemotePasswd,
-		SSHCommandPath: 	 sshCommandPath,
+		SSHCommandPath:     sshCommandPath,
+		ScpCommandPath:        scpCommandPath,
 		SlaveConf:           slaveConf,
 		SlaveRestartScript:  slaveRestartScript,
 		StoreScheme:         storeScheme,
