@@ -103,10 +103,17 @@ func rebuildHAProxyConf() {
 	for index := 0; index < taskNum; index++ {
 		task := dataList[index]
 		serverList := strings.Split(task.Servers, "-")
+		backupServerList := strings.Split(task.BackupServers, "-")
 		backendServerInfoList := make([]string, 0, 10)
 		serverNum := len(serverList)
 		for i := 0; i < serverNum; i++ {
 			backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3", serverList[i], serverList[i]))
+		}
+		backupServerNum := len(backupServerList)
+		for i := 0; i < backupServerNum; i++ {
+			if backupServerList[i] != "" {
+				backendServerInfoList = append(backendServerInfoList, fmt.Sprintf("server %s %s weight 3 check inter 2000 rise 2 fall 3 backup", backupServerList[i], backupServerList[i]))
+			}
 		}
 		listenCommon := conf.ListenCommon
 		if task.LogOrNot == 1 {
@@ -157,7 +164,7 @@ func autoAssignPort(firstPort int, lastPort int, assignedBiggest int, portSlots 
 			if upperLimit == lastPort {
 				noAvailablePort = true
 			} else {
-				vportToAssign = assignedBiggest+1
+				vportToAssign = assignedBiggest + 1
 			}
 		}
 	}
@@ -176,6 +183,7 @@ func applyVPort(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 		port, _ = strconv.Atoi(r.FormValue("port"))
 	}
 	servers := r.FormValue("servers")
+	backupServers := r.FormValue("backup_servers")
 	comment := strings.TrimSpace(r.FormValue("comment"))
 	logOrNot := r.FormValue("logornot")
 
@@ -248,7 +256,7 @@ func applyVPort(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 						if comment != "" {
 							comment += "<br />"
 						}
-						comment += "业务："+thisBToPortRange[0]
+						comment += "业务：" + thisBToPortRange[0]
 						portRange = thisBToPortRange[1]
 						break
 					}
@@ -288,8 +296,8 @@ func applyVPort(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 		if dupOrNot == 0 && noAvailablePort == false {
 			now := time.Now().Format("2006-01-02 15:04:05")
 			logornot, _ := strconv.Atoi(logOrNot)
-			//fmt.Printf("servers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, vportToAssign, comment, logornot, now)
-			err = db.InsertNewTask(servers, vportToAssign, comment, logornot, now)
+			//fmt.Printf("servers: %s, backupServers: %s, vportToAssign: %d, comment: %s, logornot: %d, now: %s", servers, backupServers, vportToAssign, comment, logornot, now)
+			err = db.InsertNewTask(servers, backupServers, vportToAssign, comment, logornot, now)
 			if err != nil {
 				logger.Println(err)
 			}
@@ -326,14 +334,15 @@ func applyVPort(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 func getListenList(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// listen任务列表数据
 	type listenTaskInfo struct {
-		Seq      int
-		Id       int
-		Servers  template.HTML
-		Vip      string
-		Vport    int
-		Comment  template.HTML
-		LogOrNot int
-		DateTime string
+		Seq           int
+		Id            int
+		Servers       template.HTML
+		BackupServers template.HTML
+		Vip           string
+		Vport         int
+		Comment       template.HTML
+		LogOrNot      int
+		DateTime      string
 	}
 	// listenlist页面模板数据
 	type listenListData struct {
@@ -351,17 +360,18 @@ func getListenList(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	for index := 0; index < rowNum; index++ {
 		row := rows[index]
 		lti := listenTaskInfo{
-			Seq:      seq,
-			Id:       row.Id,
-			Servers:  template.HTML(strings.Join(strings.Split(row.Servers, "-"), "<br />")),
-			Vip:      appConf.Vip,
-			Vport:    row.VPort,
-			Comment:  template.HTML(strings.Join(strings.Split(row.Comment, "\n"), "<br />")),
-			LogOrNot: row.LogOrNot,
-			DateTime: row.DateTime,
+			Seq:           seq,
+			Id:            row.Id,
+			Servers:       template.HTML(strings.Join(strings.Split(row.Servers, "-"), "<br />")),
+			BackupServers: template.HTML(strings.Join(strings.Split(row.BackupServers, "-"), "<br />")),
+			Vip:           appConf.Vip,
+			Vport:         row.VPort,
+			Comment:       template.HTML(strings.Join(strings.Split(row.Comment, "\n"), "<br />")),
+			LogOrNot:      row.LogOrNot,
+			DateTime:      row.DateTime,
 		}
 		listenTasks = append(listenTasks, lti)
-		seq = seq+1
+		seq = seq + 1
 	}
 	Lld := listenListData{
 		ListenTaskList: listenTasks,
@@ -403,13 +413,14 @@ func editTask(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	msg := "更新成功！"
 
 	servers := r.FormValue("servers")
+	backupServers := r.FormValue("backup_servers")
 	comment := r.FormValue("comment")
 	logornot := r.FormValue("logornot")
 	id := r.FormValue("id")
 	now := time.Now().Format("2006-01-02 15:04:05")
 	logOrNot, _ := strconv.Atoi(logornot)
 	taskId, _ := strconv.Atoi(id)
-	err := db.UpdateTaskInfo(servers, comment, logOrNot, now, taskId)
+	err := db.UpdateTaskInfo(servers, backupServers, comment, logOrNot, now, taskId)
 	if err != nil {
 		logger.Println(err)
 		success = "false"

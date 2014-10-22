@@ -21,6 +21,7 @@ func StorageTransform(appConf config.ConfigInfo) (err error) {
 	type DataRow struct {
 		Id       int
 		Servers  string
+		BackupServers  string
 		VPort    int
 		Comment  string
 		LogOrNot int
@@ -33,18 +34,19 @@ func StorageTransform(appConf config.ConfigInfo) (err error) {
 
 	if appConf.StoreScheme == 0 {
 		fmt.Println("**从数据库读取数据存入JSON文件中**")
-		rows, err := db.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
+		rows, err := db.Query("SELECT id, servers, backup_servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
 		CheckError(err)
 		var id int
 		var servers string
+		var backupServers string
 		var vport int
 		var comment string
 		var logornot int
 		var datetime string
 		taskList := make([]DataRow, 0, 100)
 		for rows.Next() {
-			err = rows.Scan(&id, &servers, &vport, &comment, &logornot, &datetime)
-			taskList = append(taskList, DataRow{Id: id, Servers: servers, VPort: vport, Comment: comment, LogOrNot: logornot, DateTime: datetime})
+			err = rows.Scan(&id, &servers, &backupServers, &vport, &comment, &logornot, &datetime)
+			taskList = append(taskList, DataRow{Id: id, Servers: servers, BackupServers: backupServers, VPort: vport, Comment: comment, LogOrNot: logornot, DateTime: datetime})
 		}
 		fmt.Printf("共%d条数据\n", len(taskList))
 		dataJson, err := json.MarshalIndent(taskList, "", "    ")
@@ -67,7 +69,7 @@ func StorageTransform(appConf config.ConfigInfo) (err error) {
 		var num int64
 		num = 0
 		for _, data := range allData {
-			result, err := db.Exec("INSERT INTO haproxymapinfo (id, servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?, ?)", data.Id, data.Servers, data.VPort, data.Comment, data.LogOrNot, data.DateTime)
+			result, err := db.Exec("INSERT INTO haproxymapinfo (id, servers, backup_servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?, ?)", data.Id, data.Servers, data.VPort, data.Comment, data.LogOrNot, data.DateTime)
 			CheckError(err)
 			n, err := result.RowsAffected()
 			CheckError(err)

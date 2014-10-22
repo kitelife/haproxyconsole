@@ -27,6 +27,7 @@ $(function () {
         $('#result').remove();
 
         var servers = $.trim($('#server-list').val());
+        var backup_servers = $.trim($('#backup-server-list').val());
         if (servers === '') {
             displayTips('输入不能为空！');
             return false;
@@ -34,30 +35,41 @@ $(function () {
 
         // 注意正则表达式不要用引号包围
         var serverList = servers.split(/\r?\n/);
+        var backupServerList = backup_servers.split(/\r?\n/);
         var syntaxError = 0;
-        var ipPortArray = new Array();
+        var ipPort;
+        var ipPortArray = [];
+        var backupIpPortArray = [];
+        var ipPortPattern =  /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):[1-9]\d+$/;
         for (var index in serverList) {
             var server = $.trim(serverList[index]);
             if (server.indexOf(':') === -1) {
                 syntaxError = 1;
                 break;
             }
-            var ipPortPattern =  /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):[1-9]\d+$/;
             if(! ipPortPattern.test(server)){
                 syntaxError = 1;
                 break;
             }
             
-            var ipPort = server.split(':');
-            /*
-            ipPort[0] = $.trim(ipPort[0]);
-            ipPort[1] = $.trim(ipPort[1]);
-            if (ipPort[0] === '' || ipPort[1] === '') {
-                syntaxError = 1;
-                break;
-            }
-            */
+            ipPort = server.split(':');
             ipPortArray.push(ipPort);
+        }
+        if(backupServerList != "") {
+            for (var index_b in backupServerList) {
+                var server_b = $.trim(backupServerList[index_b]);
+                if (server_b.indexOf(':') === -1) {
+                    syntaxError = 1;
+                    break;
+                }
+                if (!ipPortPattern.test(server_b)) {
+                    syntaxError = 1;
+                    break;
+                }
+
+                ipPort = server_b.split(':');
+                backupIpPortArray.push(ipPort);
+            }
         }
         if (syntaxError === 1) {
             displayTips('单行格式不对，应为ip:port');
@@ -75,24 +87,38 @@ $(function () {
             }
 
             var tbody = $('<tbody></tbody>');
-            var serverArray = new Array();
-            for (var index in ipPortArray) {
-                var ipPort = ipPortArray[index];
+            var serverArray = [];
+            var backupServerArray = [];
+            for (var index_c in ipPortArray) {
+                ipPort = ipPortArray[index_c];
                 var tr = $('<tr></tr>');
-                tr.append('<td>' + (parseInt(index) + 1) + '</td>' + '<td>' + ipPort[0] + '</td><td>' + ipPort[1] + '</td>');
+                tr.append('<td>' + (parseInt(index_c) + 1) + '</td>' + '<td>' + ipPort[0] + '</td><td>' + ipPort[1] + '</td>');
                 tbody.append(tr);
                 serverArray.push(ipPort.join(':'));
             }
-            $('#preview-table > table > tbody').remove();
-            $('#preview-table > table').append(tbody);
+            for (var index_d in backupIpPortArray) {
+                ipPort = backupIpPortArray[index_d];
+                tr = $('<tr></tr>');
+                tr.append('<td> Backup ' + (parseInt(index_d) + 1) + '</td>' + '<td>' + ipPort[0] + '</td><td>' + ipPort[1] + '</td>');
+                tbody.append(tr);
+                backupServerArray.push(ipPort.join(':'));
+            }
+            var preview = $('#preview-table');
+            preview.find('> table > tbody').remove();
+            preview.find('> table').append(tbody);
 
             $('#serversToSubmit').remove();
-            $('#preview-table > table').after($('<input />', {
+            $('#backupServersToSubmit').remove();
+            preview.find('> table').after($('<input />', {
                 'type': 'hidden',
                 'id': 'serversToSubmit',
                 'value': serverArray.join('-')
+            })).after($('<input />', {
+                'type': 'hidden',
+                'id': 'backupServersToSubmit',
+                'value': backupServerArray.join('-')
             }));
-            $('#preview-table').slideDown();
+            preview.slideDown();
         }
     });
 
@@ -120,6 +146,7 @@ $(function () {
         var thisId = $(this).attr("id");
 
         var servers = $.trim($('#serversToSubmit').val()),
+            backupServers = $.trim($('#backupServersToSubmit').val()),
             comment = $.trim($('#comment').val()),
             logOrNot = $("input[name='lonOptionRadios']:checked").val(),
             assignMethod = $("input[name='amOptionsRadios']:checked").val();
@@ -155,6 +182,7 @@ $(function () {
                     business: businessType,
                     port: specPort,
                     servers: servers,
+                    backup_servers: backupServers,
                     comment: comment,
                     logornot: logOrNot
                 },
@@ -166,6 +194,7 @@ $(function () {
                 // 如果成功，则清空原表单数据
                 if (resp.Success == 'true') {
                     $('#server-list').val('');
+                    $('#backup-server-list').val('');
                     $('#comment').val('');
                     $('input[name="lonOptionRadios"][value="1"]').attr('checked', true);
                     resultClass = 'alert alert-success';
@@ -189,6 +218,7 @@ $(function () {
                 'url': '/edittask',
                 'data': {
                     servers: servers,
+                    backup_servers: backupServers,
                     comment: comment,
                     logornot: logOrNot,
                     id: id
@@ -269,6 +299,7 @@ $(function () {
 
         var parent = $(this).parents(".popover");
         var servers = parent.siblings(".servers").html().replace(/(<(br|BR)\s*\/?>)/g, '\n');
+        var backup_servers = parent.siblings(".backup_servers").html().replace(/(<(br|BR)\s*\/?>)/g, '\n');
 
         var comment = parent.siblings(".comment").text();
         var logON = $.trim(parent.siblings(".logornot").text()),
@@ -282,6 +313,7 @@ $(function () {
         }));
 
         $("#server-list").val(servers);
+        $("#backup-server-list").val(backup_servers);
         $("#comment").val(comment);
         $("input[name='lonOptionRadios'][value='" + logOrNot + "']").attr("checked", true);
 
