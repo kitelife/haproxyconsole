@@ -122,6 +122,11 @@ $(function () {
         }
     });
 
+    $('#server-list, #backup-server-list').on('keydown', function (e) {
+        e.preventDefault();
+        $('#step-back, #edit-step-back').click();
+    });
+
     // 回退/修改回退 到预览功能
     $('#step-back, #edit-step-back').on('click', function(e){
         e.preventDefault();
