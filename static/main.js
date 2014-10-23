@@ -123,7 +123,6 @@ $(function () {
     });
 
     $('#server-list, #backup-server-list').on('keydown', function (e) {
-        e.preventDefault();
         $('#step-back, #edit-step-back').click();
     });
 
