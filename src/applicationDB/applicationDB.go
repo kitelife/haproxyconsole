@@ -13,27 +13,29 @@ import (
 )
 
 type NewConfDataType struct {
-	Servers  string
-	VPort    int
-	LogOrNot int
+	Servers       string
+	BackupServers string
+	VPort         int
+	LogOrNot      int
 }
 
 type DataRow struct {
-	Id       int
-	Servers  string
-	VPort    int
-	Comment  string
-	LogOrNot int
-	DateTime string
+	Id            int
+	Servers       string
+	BackupServers string
+	VPort         int
+	Comment       string
+	LogOrNot      int
+	DateTime      string
 }
 
 type DB interface {
 	QueryNewConfData() ([]NewConfDataType, error)
 	QueryVPort() ([]int, error)
-	InsertNewTask(string, int, string, int, string) error
+	InsertNewTask(string, string, int, string, int, string) error
 	QueryForTaskList() ([]DataRow, error)
 	DeleteTask(int) (sql.Result, error)
-	UpdateTaskInfo(string, string, int, string, int) error
+	UpdateTaskInfo(string, string, string, int, string, int) error
 	Close() error
 }
 
@@ -84,11 +86,11 @@ func (drs DataRows) Len() int {
 	return len(drs)
 }
 
-func (drs DataRows) Swap(i, j int){
+func (drs DataRows) Swap(i, j int) {
 	drs[i], drs[j] = drs[j], drs[i]
 }
 
-func (drs DataRows) Less(i, j int)bool{
+func (drs DataRows) Less(i, j int) bool {
 	return drs[i].VPort <= drs[j].VPort
 }
 
@@ -149,17 +151,18 @@ func (rdff ResultDeleteFromFile) RowsAffected() (int64, error) {
 	return rdff.AffectedRows, nil
 }
 
-// SELECT servers, vport, logornot FROM haproxymapinfo ORDER BY vport ASC
+// SELECT servers, backup_servers, vport, logornot FROM haproxymapinfo ORDER BY vport ASC
 // QueryNewConfData() ([]NewConfDataType, error)
 func (d database) QueryNewConfData() (dataList []NewConfDataType, err error) {
 	dataList = make([]NewConfDataType, 0, 100)
 	rows, err := d.Db.Query("SELECT servers, vport, logornot FROM haproxymapinfo ORDER BY vport ASC")
 	var servers string
+	var backupServers string
 	var vport int
 	var logOrNot int
 	for rows.Next() {
-		err = rows.Scan(&servers, &vport, &logOrNot)
-		dataList = append(dataList, NewConfDataType{Servers: servers, VPort: vport, LogOrNot: logOrNot})
+		err = rows.Scan(&servers, &backupServers, &vport, &logOrNot)
+		dataList = append(dataList, NewConfDataType{Servers: servers, BackupServers: backupServers, VPort: vport, LogOrNot: logOrNot})
 	}
 	return
 }
@@ -170,7 +173,7 @@ func (f fileForStore) QueryNewConfData() (dataList []NewConfDataType, err error)
 	taskNum := len(allData)
 	for index := 0; index < taskNum; index++ {
 		task := allData[index]
-		dataList = append(dataList, NewConfDataType{Servers: task.Servers, VPort: task.VPort, LogOrNot: task.LogOrNot})
+		dataList = append(dataList, NewConfDataType{Servers: task.Servers, BackupServers: task.BackupServers, VPort: task.VPort, LogOrNot: task.LogOrNot})
 	}
 	return
 }
@@ -198,14 +201,14 @@ func (f fileForStore) QueryVPort() (vportList []int, err error) {
 	return
 }
 
-// db.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
+// db.Exec("INSERT INTO haproxymapinfo (servers, backup_servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, backupServers, vportToAssign, comment, logOrNot, now)
 // InsertNewTask(string, int, string, int, string) (error)
-func (d database) InsertNewTask(servers string, vportToAssign int, comment string, logOrNot int, now string) (err error) {
-	_, err = d.Db.Exec("INSERT INTO haproxymapinfo (servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, vportToAssign, comment, logOrNot, now)
+func (d database) InsertNewTask(servers string, backupServers string, vportToAssign int, comment string, logOrNot int, now string) (err error) {
+	_, err = d.Db.Exec("INSERT INTO haproxymapinfo (servers, backup_servers, vport, comment, logornot, datetime) VALUES (?, ?, ?, ?, ?)", servers, backupServers, vportToAssign, comment, logOrNot, now)
 	return
 }
 
-func (f fileForStore) InsertNewTask(servers string, vportToAssign int, comment string, logOrNot int, now string) (err error) {
+func (f fileForStore) InsertNewTask(servers string, backupServers string, vportToAssign int, comment string, logOrNot int, now string) (err error) {
 	allData, err := readJson(f)
 	rowNum := len(allData)
 	maxId := -1
@@ -220,12 +223,13 @@ func (f fileForStore) InsertNewTask(servers string, vportToAssign int, comment s
 	}
 	//fmt.Printf("maxId: %d", maxId)
 	oneRowData := DataRow{
-		Id:       maxId + 1,
-		Servers:  servers,
-		VPort:    vportToAssign,
-		Comment:  comment,
-		LogOrNot: logOrNot,
-		DateTime: now,
+		Id:            maxId + 1,
+		Servers:       servers,
+		BackupServers: backupServers,
+		VPort:         vportToAssign,
+		Comment:       comment,
+		LogOrNot:      logOrNot,
+		DateTime:      now,
 	}
 	allData = append(allData, oneRowData)
 	dataJson, err := json.MarshalIndent(allData, "", "    ")
@@ -235,20 +239,21 @@ func (f fileForStore) InsertNewTask(servers string, vportToAssign int, comment s
 	return
 }
 
-// SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC
+// SELECT id, servers, backup_servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC
 // QueryForTaskList() ([]DataRow, error)
 func (d database) QueryForTaskList() (taskList []DataRow, err error) {
-	rows, err := d.Db.Query("SELECT id, servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
+	rows, err := d.Db.Query("SELECT id, servers, backup_servers, vport, comment, logornot, datetime FROM haproxymapinfo ORDER BY vport ASC")
 	var id int
 	var servers string
+	var backupServers string
 	var vport int
 	var comment string
 	var logornot int
 	var datetime string
 	taskList = make([]DataRow, 0, 100)
 	for rows.Next() {
-		err = rows.Scan(&id, &servers, &vport, &comment, &logornot, &datetime)
-		taskList = append(taskList, DataRow{Id: id, Servers: servers, VPort: vport, Comment: comment, LogOrNot: logornot, DateTime: datetime})
+		err = rows.Scan(&id, &servers, &backupServers, &vport, &comment, &logornot, &datetime)
+		taskList = append(taskList, DataRow{Id: id, Servers: servers, BackupServers: backupServers, VPort: vport, Comment: comment, LogOrNot: logornot, DateTime: datetime})
 	}
 	return
 }
@@ -283,26 +288,27 @@ func (f fileForStore) DeleteTask(id int) (result sql.Result, err error) {
 	return rdff, nil
 }
 
-// db.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
+// db.Exec("UPDATE haproxymapinfo SET servers=?, backup_servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, backupServers, comment, logornot, now, id)
 // UpdateTaskInfo(string, string, int, string, int) (error)
-func (d database) UpdateTaskInfo(servers string, comment string, logornot int, now string, id int) (err error) {
-	_, err = d.Db.Exec("UPDATE haproxymapinfo SET servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, comment, logornot, now, id)
+func (d database) UpdateTaskInfo(servers string, backupServers string, comment string, logornot int, now string, id int) (err error) {
+	_, err = d.Db.Exec("UPDATE haproxymapinfo SET servers=?, backup_servers=?, comment=?, logornot=?, datetime=? WHERE id=?", servers, backupServers, comment, logornot, now, id)
 	return
 }
 
-func (f fileForStore) UpdateTaskInfo(servers string, comment string, logornot int, now string, id int) (err error) {
+func (f fileForStore) UpdateTaskInfo(servers string, backupServers string, comment string, logornot int, now string, id int) (err error) {
 	allData, err := readJson(f)
 	rowNum := len(allData)
 	for index := 0; index < rowNum; index++ {
 		row := allData[index]
 		if row.Id == id {
 			dataOneRow := DataRow{
-				Id:       id,
-				Servers:  servers,
-				VPort:    row.VPort,
-				Comment:  comment,
-				LogOrNot: logornot,
-				DateTime: now,
+				Id:            id,
+				Servers:       servers,
+				BackupServers: backupServers,
+				VPort:         row.VPort,
+				Comment:       comment,
+				LogOrNot:      logornot,
+				DateTime:      now,
 			}
 			allData[index] = dataOneRow
 		}
